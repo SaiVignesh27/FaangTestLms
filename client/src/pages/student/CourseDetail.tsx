@@ -36,6 +36,10 @@ import {
   ArrowRight,
 } from "lucide-react";
 
+interface ClassWithViewStatus extends Class {
+  viewed?: boolean;
+}
+
 export default function CourseDetail() {
   const { id } = useParams();
   const { user } = useAuth();
@@ -68,7 +72,7 @@ export default function CourseDetail() {
   }, [id, user, course]);
 
   // Fetch course classes
-  const { data: classes, isLoading: isLoadingClasses } = useQuery<Class[]>({
+  const { data: classes, isLoading: isLoadingClasses } = useQuery<ClassWithViewStatus[]>({
     queryKey: [`/api/student/classes?courseId=${id}`],
   });
 
@@ -88,6 +92,23 @@ export default function CourseDetail() {
   const { data: testResults, isLoading: isLoadingTestResults } = useQuery<any[]>({
     queryKey: [`/api/student/results/tests`],
   });
+
+  // Fetch class results
+  const { data: classResults } = useQuery<any[]>({
+    queryKey: [`/api/student/results/classes`],
+  });
+
+  // Update classes with completion status
+  const classesWithStatus = React.useMemo(() => {
+    if (!classes || !classResults) return [];
+    return classes.map((classItem) => {
+      const result = classResults.find((r) => r.classId === classItem._id);
+      return {
+        ...classItem,
+        completed: !!result
+      };
+    });
+  }, [classes, classResults]);
 
   // Merge tests with results
   const testsWithResults = React.useMemo(() => {
@@ -165,6 +186,23 @@ export default function CourseDetail() {
         return null;
     }
   };
+
+  // Calculate progress
+  const calculateProgress = React.useCallback(() => {
+    if (!classes || !testsWithResults || !assignments) return 0;
+
+    const totalItems = classes.length + testsWithResults.length + assignments.length;
+    if (totalItems === 0) return 0;
+
+    const completedClasses = classes.filter(c => c.viewed).length;
+    const completedTests = testsWithResults.filter(t => t.isCompleted).length;
+    const completedAssignments = assignments.filter(a => a.status === 'completed').length;
+
+    const completedItems = completedClasses + completedTests + completedAssignments;
+    return Math.round((completedItems / totalItems) * 100);
+  }, [classes, testsWithResults, assignments]);
+
+  const progress = calculateProgress();
 
   if (isLoading) {
     return (
@@ -335,9 +373,9 @@ export default function CourseDetail() {
                   <div>
                     <div className="flex justify-between text-sm mb-1">
                       <span>Overall Completion</span>
-                      <span className="font-medium">68%</span>
+                      <span className="font-medium">{progress}%</span>
                     </div>
-                    <Progress value={68} className="h-2" />
+                    <Progress value={progress} className="h-2" />
                   </div>
 
                   <div className="grid grid-cols-1 gap-3 mt-4">
@@ -349,7 +387,7 @@ export default function CourseDetail() {
                         <span>Classes</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">3/5 completed</Badge>
+                        <Badge variant="outline">{classes?.filter(c => c.viewed)?.length || 0}/{classes?.length || 0} completed</Badge>
                       </div>
                     </div>
 
@@ -361,7 +399,7 @@ export default function CourseDetail() {
                         <span>Tests</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">2/3 completed</Badge>
+                        <Badge variant="outline">{testsWithResults?.filter(t => t.isCompleted)?.length || 0}/{testsWithResults?.length || 0} completed</Badge>
                       </div>
                     </div>
 
@@ -373,7 +411,7 @@ export default function CourseDetail() {
                         <span>Assignments</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">2/4 completed</Badge>
+                        <Badge variant="outline">{assignments?.filter(a => a.status === 'completed')?.length || 0}/{assignments?.length || 0} completed</Badge>
                       </div>
                     </div>
                   </div>
