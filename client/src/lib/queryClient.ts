@@ -24,6 +24,11 @@ export async function apiRequest(method: string, endpoint: string, data?: any) {
     headers['x-user-email'] = user.email;
   }
 
+  // Log request details for debugging, especially for result submission
+  if (method === 'POST' && endpoint === '/api/student/results') {
+    console.log('API Request:', { endpoint, method, data });
+  }
+
   const response = await fetch(`http://localhost:5000${endpoint}`, {
     method,
     headers,

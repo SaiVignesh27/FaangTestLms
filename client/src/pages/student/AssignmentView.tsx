@@ -1,11 +1,11 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import { useParams, Link, useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import StudentLayout from '@/components/layout/StudentLayout';
 import { Assignment, Result } from '@shared/schema';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { Loader2, ArrowLeft } from 'lucide-react';
+import { Loader2, ArrowLeft, Timer, Maximize2, Minimize2 } from 'lucide-react';
 import { apiRequest } from '@/lib/queryClient';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
@@ -14,166 +14,363 @@ import { AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 import CodeEditor from '@/components/editor/CodeEditor';
 
+interface Question {
+  type: 'mcq' | 'fill' | 'code';
+  text: string;
+  correctAnswer: string | string[];
+  points: number;
+  _id?: string;
+  options?: string[];
+  codeTemplate?: string;
+  testCases?: { input: string; output: string }[];
+  questionNumber?: number;
+  description?: string;
+  language?: string;
+}
+
 export default function AssignmentView() {
   const { id } = useParams();
   const [isSubmitting, setIsSubmitting] = useState(false);
-  const [answers, setAnswers] = useState<Record<string, string>>({});
+  const [answers, setAnswers] = useState<Record<string, string>>(() => {
+    const saved = localStorage.getItem(`answers-${id}`);
+    if (saved) {
+      try {
+        return JSON.parse(saved);
+      } catch (e) {
+        return {};
+      }
+    }
+    return {};
+  });
   const [, setLocation] = useLocation();
   const queryClient = useQueryClient();
+  const { user } = useAuth();
+  const [currentSection, setCurrentSection] = useState(1);
+  const [startTime] = useState(() => parseInt(localStorage.getItem(`startTime-${id}`) || `${Date.now()}`));
+  const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   const { data: assignment, isLoading } = useQuery<Assignment>({
     queryKey: [`/api/student/assignments/${id}`],
   });
 
+  // Enter full screen on component mount
+  useEffect(() => {
+    document.documentElement.requestFullscreen().catch(err => {
+      console.error(`Error attempting to enable full-screen: ${err.message}`);
+    });
+
+    // Exit full screen when component unmounts
+    return () => {
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(err => {
+          console.error(`Error attempting to exit full-screen: ${err.message}`);
+        });
+      }
+    };
+  }, []);
+
+  // Timer effect
+  useEffect(() => {
+    if (assignment?.timeLimit) {
+      const duration = assignment.timeLimit * 60 * 1000; // Convert minutes to milliseconds
+      const endTime = startTime + duration;
+      const remaining = Math.floor((endTime - Date.now()) / 1000);
+      setTimeLeft(Math.max(remaining, 0));
+      localStorage.setItem(`startTime-${id}`, `${startTime}`);
+    }
+  }, [assignment, id, startTime]);
+
+  useEffect(() => {
+    if (timeLeft === null) return;
+    if (timeLeft <= 0) {
+      handleSubmit();
+      return;
+    }
+    const timer = setInterval(() => setTimeLeft(prev => (prev !== null ? prev - 1 : null)), 1000);
+    return () => clearInterval(timer);
+  }, [timeLeft]);
+
+  // Get all questions for proper numbering
+  const getAllQuestions = () => {
+    if (!assignment?.questions) return [];
+    return assignment.questions;
+  };
+
+  // Get section questions with proper numbering
+  const getSectionQuestions = () => {
+    if (!assignment?.questions) return [];
+    const allQuestions = getAllQuestions();
+    
+    // First, assign numbers to all questions
+    const numberedQuestions = allQuestions.map((question, index) => ({
+      ...question,
+      questionNumber: index + 1
+    }));
+
+    // Then filter by section
+    return numberedQuestions
+      .filter(question => {
+        if (currentSection === 1) {
+          return question.type === 'mcq' || question.type === 'fill';
+        } else {
+          return question.type === 'code';
+        }
+      });
+  };
+
+  // Handler for updating answers from CodeEditor
+  const handleCodeAnswerChange = (questionNumber: number, answer: { code?: string; output?: string }) => {
+    setAnswers(prev => {
+      const answerKey = `q${questionNumber}`;
+      const existingAnswer = prev[answerKey];
+      let parsedExisting: { code?: string; output?: string } = {};
+      try {
+        if (existingAnswer) {
+          parsedExisting = JSON.parse(existingAnswer);
+        }
+      } catch (e) {
+        console.error('Failed to parse existing answer for', answerKey, e);
+      }
+      // Merge existing answer parts with new changes (code or output)
+      const updatedAnswer = { ...parsedExisting, ...answer };
+      // Store the updated answer object as a JSON string
+      const updatedAnswers = { ...prev, [answerKey]: JSON.stringify(updatedAnswer) };
+      // Update localStorage immediately
+      localStorage.setItem(`answers-${id}`, JSON.stringify(updatedAnswers));
+      return updatedAnswers;
+    });
+  };
+
+  // Save answers to localStorage whenever they change
+  useEffect(() => {
+    localStorage.setItem(`answers-${id}`, JSON.stringify(answers));
+  }, [answers, id]);
+
   const submitAssignment = useMutation({
     mutationFn: async () => {
-      if (!assignment) throw new Error('Assignment not found');
+      if (!assignment || !user) throw new Error('Assignment or user not found');
 
-      // Calculate score
       const questionResults = assignment.questions.map((question, index) => {
-        const answer = answers[question._id || index.toString()];
-        let processedAnswer = answer;
+        // Use 0-based index for database storage
+        const dbIndex = index;
+        const answerKey = `q${dbIndex + 1}`; // Use 1-based index for answer keys
+        const studentAnswer = answers[answerKey];
+        const correctAnswer = question.correctAnswer;
         let isCorrect = false;
+        let feedback = '';
+        let processedAnswer = studentAnswer;
 
-        if (question.type === 'code') {
-          // For code questions, parse the answer and use only the output
-          try {
-            const parsedAnswer = JSON.parse(answer);
-            processedAnswer = parsedAnswer.output;
-            const correctAnswer = typeof question.correctAnswer === 'string' ? question.correctAnswer : '';
-            isCorrect = processedAnswer.trim() === correctAnswer.trim();
-          } catch (e) {
-            // If parsing fails, use the raw answer
-            processedAnswer = answer;
-            const correctAnswer = typeof question.correctAnswer === 'string' ? question.correctAnswer : '';
-            isCorrect = answer.trim() === correctAnswer.trim();
-          }
-        } else {
-          // For non-code questions
-          isCorrect = answer === question.correctAnswer;
+        if (!studentAnswer) {
+          return {
+            questionId: question._id || dbIndex.toString(),
+            answer: '',
+            isCorrect: false,
+            points: 0,
+            feedback: 'No answer provided',
+            correctAnswer: question.type === 'mcq' ? question.options?.[parseInt(correctAnswer.toString())] || correctAnswer : correctAnswer
+          };
         }
 
-        const points = isCorrect ? (question.points || 1) : 0;
+        if (question.type === 'mcq') {
+          const selectedIndex = question.options?.findIndex(opt => opt === studentAnswer) ?? -1;
+          const correctIndex = parseInt(correctAnswer.toString());
+          isCorrect = selectedIndex === correctIndex;
+          feedback = isCorrect ? 'Correct' : `Incorrect. Correct answer: ${question.options?.[correctIndex] || correctAnswer}`;
+        } else if (question.type === 'fill') {
+          const studentStr = typeof studentAnswer === 'string' ? studentAnswer : '';
+          const correctStr = typeof correctAnswer === 'string' ? correctAnswer : '';
+          isCorrect = studentStr.trim().toLowerCase() === correctStr.trim().toLowerCase();
+          feedback = isCorrect ? 'Correct' : `Incorrect. Correct answer: ${correctAnswer}`;
+        } else if (question.type === 'code') {
+          try {
+            const parsedAnswer = typeof studentAnswer === 'string' ? JSON.parse(studentAnswer) : {};
+            const output = parsedAnswer.output || '';
+            const code = parsedAnswer.code || '';
+            
+            // Store both code and output in the answer
+            processedAnswer = JSON.stringify({
+              code: code,
+              output: output
+            });
+
+            const outputStr = typeof output === 'string' ? output.trim() : '';
+            const correctAnswerStr = typeof correctAnswer === 'string' ? correctAnswer.trim() : '';
+            
+            isCorrect = outputStr === correctAnswerStr;
+            feedback = isCorrect ? 'Correct output' : `Incorrect output. Expected: ${correctAnswer}`;
+          } catch (e) {
+            console.error('Error parsing code answer:', e);
+            isCorrect = false;
+            feedback = 'Invalid code answer format';
+          }
+        }
+
         return {
-          questionId: question._id || index.toString(),
+          questionId: question._id || dbIndex.toString(),
           answer: processedAnswer,
           isCorrect,
-          points,
+          points: isCorrect ? (question.points || 1) : 0,
+          feedback,
+          correctAnswer: question.type === 'mcq' ? question.options?.[parseInt(correctAnswer.toString())] || correctAnswer : correctAnswer
         };
       });
 
-      const totalPoints = questionResults.reduce((sum, q) => sum + q.points, 0);
-      const maxPoints = assignment.questions.reduce((sum, q) => sum + (q.points || 1), 0);
-      const scorePercentage = (totalPoints / maxPoints) * 100;
+      const total = questionResults.reduce((sum, q) => sum + q.points, 0);
+      const max = assignment.questions.reduce((sum, q) => sum + (q.points || 1), 0);
 
-      const result = { 
-        assignmentId: id,
+      return apiRequest('POST', '/api/student/results', {
+        studentId: user._id,
         courseId: assignment.courseId,
+        assignmentId: id,
         type: 'assignment',
         answers: questionResults,
-        score: scorePercentage,
-        maxScore: maxPoints,
+        status: 'completed',
+        score: Math.round((total / max) * 100),
+        maxScore: max,
         submittedAt: new Date(),
+        studentName: user.name,
         title: assignment.title
-      };
-
-      return apiRequest('POST', '/api/student/results', result);
-    },
-    onSuccess: (data) => {
-      queryClient.invalidateQueries({ queryKey: [`/api/student/assignments/${id}`] });
-      queryClient.setQueryData([`/api/student/assignments/${id}/results`], {
-        assignment,
-        result: data
       });
-      setLocation(`/student/assignments/${id}/results`);
     },
+    onSuccess: () => {
+      localStorage.removeItem(`answers-${id}`);
+      queryClient.invalidateQueries();
+      setLocation(`/student/assignments/${id}/results`);
+    }
   });
 
   const handleSubmit = async () => {
+    if (!assignment) return;
     setIsSubmitting(true);
     try {
       await submitAssignment.mutateAsync();
+      // Exit full screen after submission
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch(err => {
+          console.error(`Error attempting to exit full-screen: ${err.message}`);
+        });
+      }
     } catch (error) {
       console.error('Failed to submit assignment:', error);
     }
     setIsSubmitting(false);
   };
 
+  const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
+
   // Render question based on type
-  const renderQuestion = (question: any, index: number) => {
+  const renderQuestion = (question: Question) => {
+    const questionNumber = question.questionNumber || 0;
+    const answerKey = `q${questionNumber}`;
+
     switch (question.type) {
       case 'mcq':
         return (
-          <RadioGroup
-            value={answers[question._id || index.toString()]}
-            onValueChange={(value) =>
-              setAnswers(prev => ({
-                ...prev,
-                [question._id || index.toString()]: value
-              }))
-            }
-          >
-            {question.options?.map((option: string, optIndex: number) => (
-              <div key={optIndex} className="flex items-center space-x-2">
-                <RadioGroupItem
-                  value={option}
-                  id={`q${index}-opt${optIndex}`}
-                />
-                <Label htmlFor={`q${index}-opt${optIndex}`}>{option}</Label>
-              </div>
-            ))}
-          </RadioGroup>
+          <div className="space-y-6 animate-fadeIn">
+            <div className="text-lg font-medium bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent animate-gradient">
+              {question.text}
+            </div>
+            <RadioGroup
+              value={answers[answerKey] || ''}
+              onValueChange={val => {
+                setAnswers(prev => {
+                  const newAnswers = { ...prev };
+                  newAnswers[answerKey] = val;
+                  localStorage.setItem(`answers-${id}`, JSON.stringify(newAnswers));
+                  return newAnswers;
+                });
+              }}
+              className="space-y-3"
+            >
+              {question.options?.map((opt: string, i: number) => (
+                <div 
+                  key={i} 
+                  className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:border-blue-500 transition-all duration-300 cursor-pointer group hover:scale-[1.02] hover:shadow-md"
+                >
+                  <RadioGroupItem value={opt} id={`q${questionNumber}-opt${i}`} className="group-hover:border-blue-500 transition-transform duration-300 group-hover:scale-110" />
+                  <Label 
+                    htmlFor={`q${questionNumber}-opt${i}`} 
+                    className="flex-1 cursor-pointer group-hover:text-blue-600 transition-all duration-300"
+                  >
+                    {opt}
+                  </Label>
+                </div>
+              ))}
+            </RadioGroup>
+          </div>
         );
       
       case 'fill':
         return (
-          <textarea
-            className="w-full p-2 border rounded-md dark:bg-gray-800"
-            rows={4}
-            placeholder="Enter your answer here..."
-            value={answers[question._id || index.toString()] || ''}
-            onChange={(e) => setAnswers(prev => ({
-              ...prev,
-              [question._id || index.toString()]: e.target.value
-            }))}
-          />
+          <div className="space-y-6 animate-fadeIn">
+            <div className="text-lg font-medium bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent animate-gradient">
+              {question.text}
+            </div>
+            <textarea
+              className="w-full p-4 border rounded-lg focus:ring-2 focus:ring-blue-500 focus:border-blue-500 transition-all duration-300 resize-none hover:shadow-md focus:shadow-lg"
+              rows={4}
+              placeholder="Type your answer here..."
+              aria-label="Answer input"
+              value={answers[answerKey] || ''}
+              onChange={e => {
+                setAnswers(prev => {
+                  const newAnswers = { ...prev };
+                  newAnswers[answerKey] = e.target.value;
+                  localStorage.setItem(`answers-${id}`, JSON.stringify(newAnswers));
+                  return newAnswers;
+                });
+              }}
+            />
+          </div>
         );
 
       case 'code':
         return (
-          <CodeEditor
-            initialCode={question.codeTemplate || ''}
-            language="java" // Default to Java
-            readOnly={false}
-            question={question.text}
-            description={question.description}
-            onSubmit={(code, languageId, result) => {
-              // Store both the code and its output
-              const answer = {
-                code: code,
-                output: result.stdout || result.stderr || result.compile_output || 'No output'
-              };
-              setAnswers(prev => ({
-                ...prev,
-                [question._id || index.toString()]: JSON.stringify(answer)
-              }));
-            }}
-          />
+          <div className="grid grid-cols-1 md:grid-cols-2 gap-8 animate-fadeIn">
+            <div className="space-y-6">
+              <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.01]">
+                <h3 className="font-semibold mb-3 text-blue-700 flex items-center gap-2">
+                  <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                  Question
+                </h3>
+                <div className="whitespace-pre-wrap text-gray-700">{question.text}</div>
+              </div>
+              {question.description && (
+                <div className="bg-white p-6 rounded-xl border border-blue-100 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.01]">
+                  <h3 className="font-semibold mb-3 text-blue-700 flex items-center gap-2">
+                    <span className="w-2 h-2 bg-blue-500 rounded-full animate-pulse"></span>
+                    Description
+                  </h3>
+                  <div className="whitespace-pre-wrap text-gray-700">{question.description}</div>
+                </div>
+              )}
+            </div>
+            <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.01] overflow-x-auto">
+              <CodeEditor
+                initialCode={(() => {
+                  const storedAnswer = answers[answerKey];
+                  if (storedAnswer) {
+                    try {
+                      const parsed = JSON.parse(storedAnswer);
+                      return parsed.code || question.codeTemplate || '';
+                    } catch (e) {
+                      return question.codeTemplate || '';
+                    }
+                  }
+                  return question.codeTemplate || '';
+                })()}
+                language={question.language || 'java'}
+                readOnly={false}
+                question={question.text}
+                description={question.description}
+                onAnswerChange={(answer) => handleCodeAnswerChange(questionNumber, answer)}
+              />
+            </div>
+          </div>
         );
 
       default:
-        return (
-          <textarea
-            className="w-full p-2 border rounded-md dark:bg-gray-800"
-            rows={4}
-            placeholder="Enter your answer here..."
-            value={answers[question._id || index.toString()] || ''}
-            onChange={(e) => setAnswers(prev => ({
-              ...prev,
-              [question._id || index.toString()]: e.target.value
-            }))}
-          />
-        );
+        return null;
     }
   };
 
@@ -206,40 +403,107 @@ export default function AssignmentView() {
   return (
     <StudentLayout>
       <div className="space-y-6">
-        <div>
-          <Button variant="outline" asChild className="mb-4">
-            <Link href="/student/assignments">
-              <ArrowLeft className="h-4 w-4 mr-2" /> Back to Assignments
-            </Link>
-          </Button>
-          <h2 className="text-2xl font-bold">{assignment.title}</h2>
-          <p className="text-gray-600 dark:text-gray-400">{assignment.description}</p>
-        </div>
-
-        <Card>
-          <CardHeader>
-            <CardTitle>Assignment Questions</CardTitle>
-          </CardHeader>
-          <CardContent>
-            {assignment.questions?.map((question, index) => (
-              <div key={index} className="mb-6">
-                <h3 className="font-medium mb-2">Question {index + 1}</h3>
-                <p className="mb-4">{question.text}</p>
-                {renderQuestion(question, index)}
-              </div>
-            ))}
-            <div className="flex justify-end mt-6">
-              <Button
-                onClick={handleSubmit}
-                disabled={isSubmitting}
+        <div className="flex flex-col md:flex-row md:justify-between md:items-center sticky top-0 bg-white z-50 p-6 shadow-lg backdrop-blur-sm bg-white/90 rounded-xl mx-4 -mt-4 mb-8 animate-slideDown">
+          <div className="text-center md:text-left text-xl font-bold mb-4 md:mb-0">
+            <span className="text-gray-600">Assignment:</span> {assignment?.title}
+            <div className="text-sm font-normal text-gray-500 mt-1">{user?.name}</div>
+          </div>
+          <div className="flex flex-col md:flex-row items-center gap-6">
+            <div className="flex justify-center gap-3">
+              <Button 
+                variant={currentSection === 1 ? 'default' : 'outline'} 
+                onClick={() => setCurrentSection(1)}
+                className="transition-all duration-300 hover:scale-105 hover:shadow-md"
               >
-                {isSubmitting && <Loader2 className="h-4 w-4 mr-2 animate-spin" />}
-                Submit Assignment
+                Section 1 (MCQ & Fill)
+              </Button>
+              <Button 
+                variant={currentSection === 2 ? 'default' : 'outline'} 
+                onClick={() => setCurrentSection(2)}
+                className="transition-all duration-300 hover:scale-105 hover:shadow-md"
+              >
+                Section 2 (Code)
               </Button>
             </div>
-          </CardContent>
-        </Card>
+            {assignment?.timeLimit && (
+              <div className="flex items-center gap-3 text-red-600 font-bold text-lg bg-red-50 px-4 py-2 rounded-lg animate-pulse">
+                <Timer className="w-5 h-5" /> {formatTime(timeLeft ?? 0)}
+              </div>
+            )}
+            <Button
+              onClick={handleSubmit}
+              disabled={isSubmitting}
+              className="transition-all duration-300 hover:scale-105 hover:shadow-lg bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Submitting...
+                </span>
+              ) : 'Submit Assignment'}
+            </Button>
+          </div>
+        </div>
+
+        <div className="max-w-6xl mx-auto">
+          <div className="w-full bg-gray-200 rounded-full h-3 mt-6 overflow-hidden">
+            <div 
+              className="bg-gradient-to-r from-blue-500 to-blue-700 h-3 rounded-full transition-all duration-500 ease-in-out animate-gradient-x" 
+              style={{ width: `${((assignment?.questions?.filter(q => answers[(q as Question).questionNumber || 0]).length || 0) / (assignment?.questions?.length || 1)) * 100}%` }}
+            />
+          </div>
+
+          <Card className="mt-8">
+            <CardHeader>
+              <CardTitle>
+                {currentSection === 1 ? 'Multiple Choice & Fill in the Blank Questions' : 'Coding Questions'}
+              </CardTitle>
+            </CardHeader>
+            <CardContent>
+              {getSectionQuestions().map((question) => (
+                <div key={question._id || question.questionNumber} className="mb-6">
+                  <h3 className="font-medium mb-2">Question {question.questionNumber}</h3>
+                  {renderQuestion(question)}
+                </div>
+              ))}
+            </CardContent>
+          </Card>
+        </div>
       </div>
+
+      <style>{`
+        @keyframes gradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes gradient-x {
+          0% { background-position: 0% 0%; }
+          100% { background-position: 100% 0%; }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideDown {
+          from { transform: translateY(-20px); opacity: 0; }
+          to { transform: translateY(0); opacity: 1; }
+        }
+        .animate-gradient {
+          background-size: 200% auto;
+          animation: gradient 3s ease infinite;
+        }
+        .animate-gradient-x {
+          background-size: 200% auto;
+          animation: gradient-x 2s linear infinite;
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out;
+        }
+        .animate-slideDown {
+          animation: slideDown 0.5s ease-out;
+        }
+      `}</style>
     </StudentLayout>
   );
 }

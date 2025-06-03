@@ -32,6 +32,7 @@ interface CodeEditorProps {
   testCases?: string[];
   questionId?: string;
   onSubmit?: (code: string, languageId: number, result: CodeExecutionResult) => void;
+  onAnswerChange?: (answer: { code?: string; output?: string }) => void;
 }
 
 const languages: Language[] = [
@@ -47,10 +48,11 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   description,
   testCases = [],
   questionId,
-  onSubmit
+  onSubmit,
+  onAnswerChange
 }) => {
   const [code, setCode] = useState(initialCode);
-  const [selectedLanguage, setSelectedLanguage] = useState('java');
+  const [selectedLanguage, setSelectedLanguage] = useState(language);
   const [isExecuting, setIsExecuting] = useState(false);
   const [result, setResult] = useState<CodeExecutionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
@@ -91,15 +93,22 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
 
       if (submissionResult) {
         setResult(submissionResult);
-        // Get the output from the result
-        const output = submissionResult.stdout || submissionResult.stderr || submissionResult.compile_output || 'No output';
+        // Get the output from the result and clean it
+        let output = submissionResult.stdout || submissionResult.stderr || submissionResult.compile_output || 'No output';
+        // Remove "Your Output:" prefix if it exists
+        output = output.replace(/^Your Output:\s*/i, '').trim();
         setOutput(output);
         
+        // Call onAnswerChange with both code and cleaned output
+        if (onAnswerChange) {
+          onAnswerChange({ code, output });
+        }
+        
+        // Also call onSubmit if provided
         if (onSubmit) {
-          // Pass both the code and the complete result to onSubmit
           onSubmit(code, languages.find(l => l.name === selectedLanguage)?.id || 0, {
             ...submissionResult,
-            output: output // Add the output to the result object
+            output: output
           });
         }
       }
@@ -164,14 +173,23 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
       }
 
       const data = await response.json();
-      setOutput(data.output);
+      // Clean the output
+      let output = data.output;
+      // Remove "Your Output:" prefix if it exists
+      output = output.replace(/^Your Output:\s*/i, '').trim();
+      setOutput(output);
       setTestResults(data.testResults);
       setScore(data.score);
 
-      // Store the output in answers state if onSubmit is provided
+      // Call onAnswerChange with both code and cleaned output
+      if (onAnswerChange) {
+        onAnswerChange({ code, output });
+      }
+
+      // Also call onSubmit if provided
       if (onSubmit) {
         const result: CodeExecutionResult = {
-          stdout: data.output,
+          stdout: output,
           stderr: null,
           compile_output: null,
           message: null,
@@ -187,6 +205,13 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
       setIsRunning(false);
     }
   };
+
+  // Add effect to update parent when code changes
+  useEffect(() => {
+    if (onAnswerChange) {
+      onAnswerChange({ code });
+    }
+  }, [code, onAnswerChange]);
 
   return (
     <div className="code-editor">

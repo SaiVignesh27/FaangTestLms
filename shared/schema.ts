@@ -120,6 +120,7 @@ export const assignmentSchema = z.object({
   allowFileUpload: z.boolean().default(false),
   createdAt: z.date().optional(),
   updatedAt: z.date().optional(),
+  timeLimit: z.number().optional(), // Time limit in minutes
 });
 
 // Result schema for tests and assignments

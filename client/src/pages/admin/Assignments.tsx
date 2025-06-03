@@ -82,7 +82,8 @@ import {
   Code,
   Calendar,
   Upload,
-  Minus
+  Minus,
+  Timer
 } from 'lucide-react';
 
 // Form schema for creating/editing assignments
@@ -110,6 +111,7 @@ const assignmentFormSchema = z.object({
     startTime: z.date(),
     endTime: z.date(),
   }),
+  timeLimit: z.number().min(1, "Time limit must be at least 1 minute").optional(),
   allowFileUpload: z.boolean().default(false),
 });
 
@@ -158,6 +160,7 @@ export default function Assignments() {
         startTime: new Date(),
         endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
       },
+      timeLimit: undefined,
       allowFileUpload: false,
     },
   });
@@ -182,6 +185,7 @@ export default function Assignments() {
           startTime: new Date(selectedAssignment.timeWindow?.startTime || Date.now()),
           endTime: new Date(selectedAssignment.timeWindow?.endTime || Date.now() + 7 * 24 * 60 * 60 * 1000),
         },
+        timeLimit: selectedAssignment.timeLimit,
         allowFileUpload: selectedAssignment.allowFileUpload || false,
       });
     } else if (isDialogOpen) {
@@ -204,6 +208,7 @@ export default function Assignments() {
           startTime: new Date(),
           endTime: new Date(Date.now() + 7 * 24 * 60 * 60 * 1000), // 1 week from now
         },
+        timeLimit: undefined,
         allowFileUpload: false,
       });
     }
@@ -771,6 +776,34 @@ export default function Assignments() {
                               />
                             </div>
                           </FormControl>
+                          <FormMessage />
+                        </FormItem>
+                      )}
+                    />
+                  </div>
+                  <div className="grid grid-cols-2 gap-4">
+                    <FormField
+                      control={form.control}
+                      name="timeLimit"
+                      render={({ field }) => (
+                        <FormItem>
+                          <FormLabel>Time Limit (minutes)</FormLabel>
+                          <FormControl>
+                            <div className="flex items-center">
+                              <Timer className="mr-2 h-4 w-4 text-gray-500" />
+                              <Input
+                                type="number"
+                                min="1"
+                                placeholder="Enter time limit in minutes"
+                                {...field}
+                                onChange={(e) => field.onChange(e.target.value ? parseInt(e.target.value) : undefined)}
+                                value={field.value || ''}
+                              />
+                            </div>
+                          </FormControl>
+                          <p className="text-sm text-gray-500 dark:text-gray-400">
+                            Leave empty for no time limit
+                          </p>
                           <FormMessage />
                         </FormItem>
                       )}
