@@ -46,7 +46,15 @@ export default function AssignmentView() {
   const queryClient = useQueryClient();
   const { user } = useAuth();
   const [currentSection, setCurrentSection] = useState(1);
-  const [startTime] = useState(() => parseInt(localStorage.getItem(`startTime-${id}`) || `${Date.now()}`));
+  const [startTime] = useState(() => {
+    const saved = localStorage.getItem(`startTime-${id}`);
+    if (saved) {
+      return parseInt(saved);
+    }
+    const now = Date.now();
+    localStorage.setItem(`startTime-${id}`, `${now}`);
+    return now;
+  });
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
 
   const { data: assignment, isLoading } = useQuery<Assignment>({
@@ -151,57 +159,46 @@ export default function AssignmentView() {
       if (!assignment || !user) throw new Error('Assignment or user not found');
 
       const questionResults = assignment.questions.map((question, index) => {
-        // Use 0-based index for database storage
         const dbIndex = index;
         const answerKey = `q${dbIndex + 1}`; // Use 1-based index for answer keys
-        const studentAnswer = answers[answerKey];
-        const correctAnswer = question.correctAnswer;
+        const answer = answers[answerKey];
         let isCorrect = false;
         let feedback = '';
-        let processedAnswer = studentAnswer;
+        let processedAnswer = answer;
+        let correctAnswer = question.correctAnswer;
 
-        if (!studentAnswer) {
+        if (!answer) {
           return {
             questionId: question._id || dbIndex.toString(),
             answer: '',
             isCorrect: false,
             points: 0,
             feedback: 'No answer provided',
-            correctAnswer: question.type === 'mcq' ? question.options?.[parseInt(correctAnswer.toString())] || correctAnswer : correctAnswer
+            correctAnswer: question.correctAnswer
           };
         }
 
         if (question.type === 'mcq') {
-          const selectedIndex = question.options?.findIndex(opt => opt === studentAnswer) ?? -1;
+          const selectedIndex = question.options?.findIndex(opt => opt === answer) ?? -1;
           const correctIndex = parseInt(correctAnswer.toString());
           isCorrect = selectedIndex === correctIndex;
           feedback = isCorrect ? 'Correct' : `Incorrect. Correct answer: ${question.options?.[correctIndex] || correctAnswer}`;
         } else if (question.type === 'fill') {
-          const studentStr = typeof studentAnswer === 'string' ? studentAnswer : '';
+          const studentStr = typeof answer === 'string' ? answer : '';
           const correctStr = typeof correctAnswer === 'string' ? correctAnswer : '';
           isCorrect = studentStr.trim().toLowerCase() === correctStr.trim().toLowerCase();
           feedback = isCorrect ? 'Correct' : `Incorrect. Correct answer: ${correctAnswer}`;
         } else if (question.type === 'code') {
           try {
-            const parsedAnswer = typeof studentAnswer === 'string' ? JSON.parse(studentAnswer) : {};
+            const parsedAnswer = typeof answer === 'string' ? JSON.parse(answer) : {};
             const output = parsedAnswer.output || '';
             const code = parsedAnswer.code || '';
-            
-            // Store both code and output in the answer
-            processedAnswer = JSON.stringify({
-              code: code,
-              output: output
-            });
-
-            const outputStr = typeof output === 'string' ? output.trim() : '';
-            const correctAnswerStr = typeof correctAnswer === 'string' ? correctAnswer.trim() : '';
-            
-            isCorrect = outputStr === correctAnswerStr;
-            feedback = isCorrect ? 'Correct output' : `Incorrect output. Expected: ${correctAnswer}`;
+            const correctAnswerStr = typeof question.correctAnswer === 'string' ? question.correctAnswer : '';
+            isCorrect = output.trim() === correctAnswerStr.trim();
+            feedback = isCorrect ? 'Correct' : `Incorrect. Expected output: ${correctAnswerStr}`;
+            processedAnswer = JSON.stringify({ code, output });
           } catch (e) {
-            console.error('Error parsing code answer:', e);
-            isCorrect = false;
-            feedback = 'Invalid code answer format';
+            feedback = 'Invalid code submission';
           }
         }
 
@@ -218,6 +215,9 @@ export default function AssignmentView() {
       const total = questionResults.reduce((sum, q) => sum + q.points, 0);
       const max = assignment.questions.reduce((sum, q) => sum + (q.points || 1), 0);
 
+      // Calculate time spent in seconds
+      const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+
       return apiRequest('POST', '/api/student/results', {
         studentId: user._id,
         courseId: assignment.courseId,
@@ -229,11 +229,13 @@ export default function AssignmentView() {
         maxScore: max,
         submittedAt: new Date(),
         studentName: user.name,
-        title: assignment.title
+        title: assignment.title,
+        timeSpent: timeSpent // Add time spent to the results
       });
     },
     onSuccess: () => {
       localStorage.removeItem(`answers-${id}`);
+      localStorage.removeItem(`startTime-${id}`); // Clean up start time
       queryClient.invalidateQueries();
       setLocation(`/student/assignments/${id}/results`);
     }
