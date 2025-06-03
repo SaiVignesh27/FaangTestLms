@@ -291,16 +291,40 @@ export default function TestResults() {
                     )}
 
                     {question.type === 'code' && (
-                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className={`p-4 rounded-lg ${isCorrect ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'}`}>
-                          <p className="font-medium mb-2">Your Output:</p>
-                          <pre className="whitespace-pre-wrap text-sm font-mono">{answer?.answer || "No output"}</pre>
+                      <>
+                        <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg mb-4">
+                          <p className="font-medium mb-2">Your Code:</p>
+                          <pre className="whitespace-pre-wrap text-sm font-mono">
+                            {(() => {
+                              try {
+                                const parsedAnswer = JSON.parse(answer?.answer || '{}');
+                                return parsedAnswer.code || "No code provided";
+                              } catch (e) {
+                                return "No code provided";
+                              }
+                            })()}
+                          </pre>
                         </div>
-                        <div className="p-4 bg-green-100 dark:bg-green-900 rounded-lg">
-                          <p className="font-medium mb-2">Expected Output:</p>
-                          <pre className="whitespace-pre-wrap text-sm font-mono">{question.correctAnswer}</pre>
+                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                          <div className={`p-4 rounded-lg ${isCorrect ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'}`}>
+                            <p className="font-medium mb-2">Your Output:</p>
+                            <pre className="whitespace-pre-wrap text-sm font-mono">
+                              {(() => {
+                                try {
+                                  const parsedAnswer = JSON.parse(answer?.answer || '{}');
+                                  return parsedAnswer.output || "No output";
+                                } catch (e) {
+                                  return "No output";
+                                }
+                              })()}
+                            </pre>
+                          </div>
+                          <div className="p-4 bg-green-100 dark:bg-green-900 rounded-lg">
+                            <p className="font-medium mb-2">Expected Output:</p>
+                            <pre className="whitespace-pre-wrap text-sm font-mono">{question.correctAnswer}</pre>
+                          </div>
                         </div>
-                      </div>
+                      </>
                     )}
 
                     {answer?.feedback && (

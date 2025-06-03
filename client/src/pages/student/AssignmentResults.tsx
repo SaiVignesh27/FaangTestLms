@@ -244,7 +244,20 @@ export default function AssignmentResults() {
                         {/* Display Student Answer */}
                          <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
                            <p className="font-medium mb-2">Your Answer:</p>
-                           <p>{answer?.answer || "No answer provided"}</p>
+                           {question.type === 'code' ? (
+                             <pre className="whitespace-pre-wrap text-sm font-mono">
+                               {(() => {
+                                 try {
+                                   const parsedAnswer = JSON.parse(answer?.answer || '{}');
+                                   return parsedAnswer.code || "No code provided";
+                                 } catch (e) {
+                                   return "No code provided";
+                                 }
+                               })()}
+                             </pre>
+                           ) : (
+                             <p>{answer?.answer || "No answer provided"}</p>
+                           )}
                          </div>
                          {/* Display Correct Answer (if applicable and not correct) */}
                         {!isCorrect && question.correctAnswer && (
@@ -255,6 +268,28 @@ export default function AssignmentResults() {
                         )}
                       </div>
                      {/* Options review might not be relevant for assignments */}
+
+                    {question.type === 'code' && (
+                      <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                        <div className={`p-4 rounded-lg ${isCorrect ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'}`}>
+                          <p className="font-medium mb-2">Your Output:</p>
+                          <pre className="whitespace-pre-wrap text-sm font-mono">
+                            {(() => {
+                              try {
+                                const parsedAnswer = JSON.parse(answer?.answer || '{}');
+                                return parsedAnswer.output || "No output";
+                              } catch (e) {
+                                return "No output";
+                              }
+                            })()}
+                          </pre>
+                        </div>
+                        <div className="p-4 bg-green-100 dark:bg-green-900 rounded-lg">
+                          <p className="font-medium mb-2">Expected Output:</p>
+                          <pre className="whitespace-pre-wrap text-sm font-mono">{question.correctAnswer}</pre>
+                        </div>
+                      </div>
+                    )}
                   </CardContent>
                 </Card>
               );
