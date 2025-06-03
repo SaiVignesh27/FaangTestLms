@@ -14,7 +14,7 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   
   if (loading) {
     return (
-      <div className="flex items-center justify-center min-h-screen">
+      <div className="flex items-center justify-center min-h-screen bg-[var(--bg-primary)]">
         <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-primary"></div>
       </div>
     );
@@ -27,13 +27,13 @@ export default function AdminLayout({ children }: AdminLayoutProps) {
   
   return (
     <SidebarProvider>
-      <div className="flex h-screen overflow-hidden">
+      <div className="flex h-screen overflow-hidden bg-[var(--bg-primary)]">
         <Sidebar />
         
         <div className="flex-1 flex flex-col overflow-hidden">
           <Header />
           
-          <main className="flex-1 overflow-y-auto bg-gray-50 dark:bg-dark-background p-4 md:p-6">
+          <main className="flex-1 overflow-y-auto bg-[var(--bg-secondary)] p-4 md:p-6">
             {children}
           </main>
         </div>

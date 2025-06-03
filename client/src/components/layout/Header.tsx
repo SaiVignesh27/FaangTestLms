@@ -52,47 +52,53 @@ export default function Header() {
   };
 
   return (
-    <header className="h-16 border-b border-light-border dark:border-dark-border bg-white dark:bg-dark-surface shadow-sm z-30">
+    <header className="h-16 border-b border-[var(--border-color)] bg-[var(--bg-primary)]">
       <div className="flex items-center justify-between h-full px-4">
         <div className="flex items-center">
           <button 
             onClick={toggleSidebar}
-            className="p-1 mr-2 rounded-full md:hidden hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="p-1.5 mr-2 rounded-md md:hidden hover:bg-[var(--hover-bg)]"
             aria-label="Toggle sidebar"
           >
-            <Menu className="h-6 w-6" />
+            <Menu className="h-5 w-5 text-[var(--icon-primary)]" />
           </button>
-          <h1 className="text-xl font-medium font-heading hidden sm:block">{getPageTitle()}</h1>
+          <h1 className="text-lg font-medium text-[var(--text-primary)] hidden sm:block">
+            {getPageTitle()}
+          </h1>
         </div>
         
-        <div className="flex items-center space-x-3">
+        <div className="flex items-center space-x-2">
           <button 
             onClick={toggleTheme}
-            className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700"
+            className="p-1.5 rounded-md hover:bg-[var(--hover-bg)]"
             aria-label={theme === 'dark' ? 'Switch to light mode' : 'Switch to dark mode'}
           >
             {theme === 'dark' ? (
-              <Sun className="h-5 w-5" />
+              <Sun className="h-5 w-5 text-[var(--icon-primary)]" />
             ) : (
-              <Moon className="h-5 w-5" />
+              <Moon className="h-5 w-5 text-[var(--icon-primary)]" />
             )}
           </button>
           
           <div className="relative">
             <button 
-              className="p-2 rounded-full hover:bg-gray-200 dark:hover:bg-gray-700 relative"
+              className="p-1.5 rounded-md hover:bg-[var(--hover-bg)] relative"
               aria-label="View notifications"
             >
-              <Bell className="h-5 w-5" />
+              <Bell className="h-5 w-5 text-[var(--icon-primary)]" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
             </button>
           </div>
           
-          <div className="flex items-center">
-            <Avatar className="h-8 w-8 bg-primary-light text-white">
-              <AvatarFallback>{getUserInitials()}</AvatarFallback>
+          <div className="flex items-center pl-2 border-l border-[var(--border-color)]">
+            <Avatar className="h-8 w-8">
+              <AvatarFallback className="bg-primary text-white">
+                {getUserInitials()}
+              </AvatarFallback>
             </Avatar>
-            <span className="text-sm font-medium hidden sm:block ml-2">{user?.name || 'User'}</span>
+            <span className="text-sm font-medium hidden sm:block ml-2 text-[var(--text-primary)]">
+              {user?.name || 'User'}
+            </span>
           </div>
         </div>
       </div>
