@@ -125,18 +125,24 @@ export class MongoDBStorage implements IStorage {
   
   async updateUser(id: string, userData: Partial<User>): Promise<User | null> {
     await this.connect();
-    
+
     // If password is being updated, hash it
     if (userData.password) {
+      // Ensure the password is a string and not empty
+      if (typeof userData.password !== 'string' || userData.password.trim() === '') {
+        throw new Error('Invalid password');
+      }
+
+      // Generate a new hash for the password
       userData.password = await bcrypt.hash(userData.password, 10);
     }
-    
+
     const result = await this.users.findOneAndUpdate(
       { _id: id },
       { $set: userData },
       { returnDocument: 'after' }
     );
-    
+
     return result || null;
   }
   

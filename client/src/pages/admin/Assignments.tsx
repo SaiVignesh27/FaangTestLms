@@ -452,6 +452,10 @@ export default function Assignments() {
         );
 
       case 'code':
+        // Ensure testCase and its properties are initialized
+        const testCaseInput = form.watch(`questions.${index}.testCase.input`) || '';
+        const testCaseOutput = form.watch(`questions.${index}.testCase.output`) || '';
+
         return (
           <div className="space-y-4">
             <FormField
@@ -496,7 +500,7 @@ export default function Assignments() {
                           className="font-mono h-32 focus-visible:ring-blue-500 transition-colors duration-200"
                           placeholder="Enter test input"
                           {...field}
-                          value={field.value || ''}
+                          value={testCaseInput} // Use the potentially initialized value
                         />
                       </FormControl>
                       <FormMessage />
@@ -515,7 +519,7 @@ export default function Assignments() {
                           className="font-mono h-32 focus-visible:ring-blue-500 transition-colors duration-200"
                           placeholder="Enter expected output"
                           {...field}
-                          value={field.value || ''}
+                          value={testCaseOutput} // Use the potentially initialized value
                           onChange={(e) => {
                             field.onChange(e);
                             // Update correctAnswer with the output value

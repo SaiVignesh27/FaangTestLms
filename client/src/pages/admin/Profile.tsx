@@ -125,6 +125,7 @@ export default function Profile() {
       });
     },
     onError: (error) => {
+      console.error('Password update error:', error);
       toast({
         title: 'Error updating password',
         description: (error as Error).message,

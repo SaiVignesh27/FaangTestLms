@@ -69,6 +69,7 @@ export interface AssignmentStatus {
   _id: string;
   title: string;
   courseTitle: string;
+  courseId: string;
   dueDate: Date;
   status: 'pending' | 'in-progress' | 'completed' | 'overdue';
 }

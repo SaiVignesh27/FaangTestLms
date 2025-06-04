@@ -360,9 +360,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const courseId = req.query.courseId as string | undefined;
-      const assignments = await mongoStorage.listAssignments({ 
-        courseId,
-        user
+      
+      // If courseId is provided, filter assignments by course
+      // Otherwise, list all assignments relevant to the user
+      const assignments = await mongoStorage.listAssignments({
+        ...(courseId && { courseId }), // Include courseId in filter if provided
+        user // Pass user object to filter by enrolled courses and visibility
       });
 
       // Fetch student's assignment results
@@ -391,6 +394,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         return {
           ...assignment,
+          courseId: assignment.courseId, // Explicitly include courseId
           status,
           dueDate
         };
@@ -575,13 +579,28 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'User not found' });
       }
 
+      // Validate input
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'Current password and new password are required' });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+      }
+
+      // Verify current password
       const isValidPassword = await bcrypt.compare(currentPassword, user.password);
       if (!isValidPassword) {
         return res.status(401).json({ error: 'Current password is incorrect' });
       }
 
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await mongoStorage.updateUser(user._id, { password: hashedPassword });
+      // Update the new password
+      // The hashing is handled within mongoStorage.updateUser
+      const updatedUser = await mongoStorage.updateUser(user._id, { password: newPassword });
+
+      if (!updatedUser) {
+        return res.status(500).json({ error: 'Failed to update password' });
+      }
 
       res.json({ message: 'Password updated successfully' });
     } catch (error) {
@@ -639,13 +658,26 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'User not found' });
       }
 
+      // Validate input
+      if (!currentPassword || !newPassword) {
+        return res.status(400).json({ error: 'Current password and new password are required' });
+      }
+
+      if (newPassword.length < 6) {
+        return res.status(400).json({ error: 'New password must be at least 6 characters long' });
+      }
+
+      // Verify current password
       const isValidPassword = await bcrypt.compare(currentPassword, user.password);
       if (!isValidPassword) {
         return res.status(401).json({ error: 'Current password is incorrect' });
       }
 
-      const hashedPassword = await bcrypt.hash(newPassword, 10);
-      await mongoStorage.updateUser(user._id, { password: hashedPassword });
+      const updatedUser = await mongoStorage.updateUser(user._id, { password: newPassword });
+
+      if (!updatedUser) {
+        return res.status(500).json({ error: 'Failed to update password' });
+      }
 
       res.json({ message: 'Password updated successfully' });
     } catch (error) {
@@ -1184,9 +1216,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       const courseId = req.query.courseId as string | undefined;
-      const assignments = await mongoStorage.listAssignments({ 
-        courseId,
-        user
+      
+      // If courseId is provided, filter assignments by course
+      // Otherwise, list all assignments relevant to the user
+      const assignments = await mongoStorage.listAssignments({
+        ...(courseId && { courseId }), // Include courseId in filter if provided
+        user // Pass user object to filter by enrolled courses and visibility
       });
 
       // Fetch student's assignment results
@@ -1215,6 +1250,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
         return {
           ...assignment,
+          courseId: assignment.courseId,
           status,
           dueDate
         };
