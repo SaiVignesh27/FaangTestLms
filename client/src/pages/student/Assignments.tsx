@@ -43,21 +43,28 @@ import {
   XCircle,
   FileQuestion
 } from 'lucide-react';
+import test from 'node:test';
 
 // Interface for assignment with result
 interface AssignmentWithResult extends Assignment {
   result?: {
-    _id: string;
-    score: number;
-    submittedAt: string;
+    _id?: string;
+    title: string;
+    courseId: string;
+    status: 'pending' | 'in-progress' | 'completed' | 'overdue';
+    type: 'test' | 'assignment';
+    studentId: string;
     answers: Array<{
       questionId: string;
-      answer: string;
+      answer?: string;
       isCorrect: boolean;
       points: number;
-      feedback: string;
-      correctAnswer: string;
+      feedback?: string;
     }>;
+    score: number;
+    maxScore: number;
+    submittedAt: Date | string;
+    timeSpent?: number;
   };
   points?: number;
   isCompleted: boolean;
@@ -361,19 +368,21 @@ export default function Assignments() {
                           </span>
                           <div className="flex items-center">
                             <Star className="h-4 w-4 text-yellow-500 mr-1" fill="currentColor" />
-                            <span className="font-semibold">{assignment.score}%</span>
+                            <span className="font-semibold">
+                              {assignment.result ? Math.round((assignment.result.score / assignment.result.maxScore) * 100) : 0}%
+                            </span>
                           </div>
                         </div>
                         <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                           <div
                             className={`h-full rounded-full transition-all duration-500 ${
-                              (assignment.score || 0) >= 70
+                              (assignment.result ? Math.round((assignment.result.score / assignment.result.maxScore) * 100) : 0) >= 70
                                 ? "bg-green-500"
-                                : (assignment.score || 0) >= 40
+                                : (assignment.result ? Math.round((assignment.result.score / assignment.result.maxScore) * 100) : 0) >= 40
                                 ? "bg-yellow-500"
                                 : "bg-red-500"
                             }`}
-                            style={{ width: `${assignment.score}%` }}
+                            style={{ width: `${assignment.result ? Math.round((assignment.result.score / assignment.result.maxScore) * 100) : 0}%` }}
                           />
                         </div>
                       </div>

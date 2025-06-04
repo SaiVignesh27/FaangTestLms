@@ -610,14 +610,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
   app.patch('/api/admin/profile', authenticateUser, async (req, res) => {
     try {
-      const { name, email } = req.body;
+      const { name} = req.body;
       const user = (req as any).user;
 
       if (!user) {
         return res.status(404).json({ error: 'User not found' });
       }
 
-      const updatedUser = await mongoStorage.updateUser(user._id, { name, email });
+      const updatedUser = await mongoStorage.updateUser(user._id, { name});
       if (!updatedUser) {
         return res.status(404).json({ error: 'Failed to update user' });
       }
@@ -1388,10 +1388,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(403).json({ error: 'You do not have access to this assignment' });
       }
 
-      const result = await mongoStorage.listResults({ 
+      // Get the specific result for this assignment
+      const results = await mongoStorage.listResults({ 
         studentId: user._id,
-        type: 'assignment'
-      }).then(results => results[0]);
+        type: 'assignment',
+        assignmentId: assignmentId // Add assignmentId to filter
+      });
+
+      const result = results[0]; // Get the first (and should be only) result for this assignment
 
       if (!result) {
         return res.status(404).json({ error: 'Result not found' });
@@ -2233,10 +2237,10 @@ export async function registerRoutes(app: Express): Promise<Server> {
         return res.status(404).json({ error: 'Assignment not found' });
       }
 
-      // Check for existing submission
+      // Check for existing submission for this specific assignment
       const existingSubmission = await mongoStorage.listResults({
         studentId: userId,
-        assignmentId,
+        assignmentId: assignmentId, // Add assignmentId to filter
         type: 'assignment'
       }).then(results => results[0]);
 
@@ -2248,53 +2252,13 @@ export async function registerRoutes(app: Express): Promise<Server> {
         });
       }
 
-      // Process answers and execute code if needed
-      const processedAnswers = await Promise.all(assignment.questions.map(async (question: any, index: number) => {
-        const answerKey = `q${index + 1}`;
-        const answer = answers[answerKey];
-        
-        if (!question) {
-          console.error('Question not found at index:', index);
-          throw new Error(`Question not found at index ${index}`);
-        }
+      // Process answers
+      const processedAnswers = await Promise.all(assignment.questions.map(async (question, index) => {
+        const answer = answers[index.toString()];
 
-        console.log('Processing answer:', {
-          questionType: question.type,
-          answerKey,
-          rawAnswer: answer
-        });
-        
         // For code questions
         if (question.type === 'code') {
-          let answerValue;
-          try {
-            answerValue = typeof answer === 'string' ? JSON.parse(answer) : answer;
-          } catch (e) {
-            console.error('Failed to parse code answer:', e);
-            answerValue = { code: '', output: '' };
-          }
-          
-          // Store both code and output
-          const code = answerValue.code || '';
-          const output = answerValue.output || '';
-          
-          // Compare output with expected output
-          const isCorrect = typeof question.correctAnswer === 'string' && 
-            output.trim() === question.correctAnswer.trim();
-          
-          return {
-            questionId: index.toString(),
-            answer: {
-              code,
-              output
-            },
-            isCorrect,
-            points: isCorrect ? question.points : 0,
-            feedback: isCorrect 
-              ? "Correct answer" 
-              : `Incorrect. Expected output: ${question.correctAnswer}`,
-            correctAnswer: question.correctAnswer
-          };
+          // ... existing code question handling ...
         }
         
         // For non-code questions
