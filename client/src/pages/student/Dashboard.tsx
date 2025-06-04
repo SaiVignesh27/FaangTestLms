@@ -90,7 +90,7 @@ export default function StudentDashboard() {
 
   // Calculate course-specific progress
   const calculateCourseProgress = React.useCallback((courseId: string) => {
-    if (!allTests || !allAssignments) return {
+    if (!allTests || !allAssignments || !courses) return {
       completedTests: 0,
       totalTests: 0,
       completedAssignments: 0,
@@ -102,8 +102,12 @@ export default function StudentDashboard() {
     const completedTests = courseTests.filter(test => test.status === 'completed').length;
     const totalTests = courseTests.length;
 
-    // Filter assignments for this course
-    const courseAssignments = allAssignments.filter(assignment => assignment.courseTitle === courseId);
+    // Find the course title for the given courseId
+    const course = courses.find(c => c._id === courseId);
+    const courseTitle = course?.title;
+
+    // Filter assignments for this course using courseId
+    const courseAssignments = allAssignments.filter(assignment => assignment.courseId === courseId);
     const completedAssignments = courseAssignments.filter(assignment => assignment.status === 'completed').length;
     const totalAssignments = courseAssignments.length;
 
@@ -113,7 +117,7 @@ export default function StudentDashboard() {
       completedAssignments,
       totalAssignments
     };
-  }, [allTests, allAssignments]);
+  }, [allTests, allAssignments, courses]);
 
   // Calculate assignment stats
   const assignmentStats = React.useMemo(() => {
