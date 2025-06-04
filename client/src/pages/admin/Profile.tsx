@@ -30,13 +30,12 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, User as UserIcon, Key, Mail, Shield } from 'lucide-react';
+import { Loader2, User as UserIcon, Key, Mail, Shield, Clock } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
 
 // Form schema for profile update
 const profileFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
-  email: z.string().email("Invalid email address"),
 });
 
 // Form schema for password update
@@ -49,7 +48,10 @@ const passwordFormSchema = z.object({
   path: ["confirmPassword"],
 });
 
-type ProfileFormValues = z.infer<typeof profileFormSchema>;
+type ProfileFormValues = {
+  name: string;
+};
+
 type PasswordFormValues = z.infer<typeof passwordFormSchema>;
 
 export default function Profile() {
@@ -67,7 +69,6 @@ export default function Profile() {
     resolver: zodResolver(profileFormSchema),
     defaultValues: {
       name: '',
-      email: '',
     },
   });
 
@@ -86,7 +87,6 @@ export default function Profile() {
     if (profile) {
       profileForm.reset({
         name: profile.name,
-        email: profile.email,
       });
     }
   }, [profile, profileForm]);
@@ -157,61 +157,78 @@ export default function Profile() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Profile Settings</h2>
-          <p className="text-gray-600 dark:text-gray-400">Manage your account details and preferences</p>
+      <div className="space-y-8">
+        {/* Welcome Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl shadow-lg p-8 text-white animate-fadeIn">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Avatar className="h-20 w-20 border-4 border-white/20">
+                <AvatarFallback className="bg-white/20 text-white text-2xl">
+                  {isLoadingProfile ? <Loader2 className="h-8 w-8 animate-spin" /> : getUserInitials()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h2 className="text-3xl font-bold mb-2">{profile?.name || 'Loading...'}</h2>
+                <p className="text-blue-100 flex items-center">
+                  <Shield className="h-5 w-5 mr-2" />
+                  Administrator Account
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 md:mt-0">
+              <p className="text-blue-100 flex items-center">
+                <Mail className="h-5 w-5 mr-2" />
+                {profile?.email || 'Loading...'}
+              </p>
+            </div>
+          </div>
         </div>
 
         <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-2 md:w-[400px]">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 md:w-[600px] bg-white dark:bg-gray-800 p-1 rounded-lg shadow-md">
+            <TabsTrigger 
+              value="general" 
+              className="data-[state=active]:bg-blue-500 data-[state=active]:text-white transition-all duration-300"
+            >
+              General
+            </TabsTrigger>
+            <TabsTrigger 
+              value="security" 
+              className="data-[state=active]:bg-blue-500 data-[state=active]:text-white transition-all duration-300"
+            >
+              Security
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="general" className="space-y-6">
-            <Card>
+            <Card className="hover:shadow-lg transition-all duration-300 animate-fadeIn">
               <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
+                <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                  Profile Information
+                </CardTitle>
                 <CardDescription>Update your personal information</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-                  <Avatar className="h-20 w-20 text-2xl">
-                    <AvatarFallback className="bg-primary text-white">
-                      {isLoadingProfile ? <Loader2 className="h-6 w-6 animate-spin" /> : getUserInitials()}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div>
-                    <h3 className="font-medium text-lg">{profile?.name || 'Loading...'}</h3>
-                    <p className="text-gray-500 dark:text-gray-400">{profile?.email || 'Loading...'}</p>
-                    <p className="text-sm flex items-center mt-1">
-                      <Shield className="h-4 w-4 text-primary mr-1" />
-                      <span>Administrator Account</span>
-                    </p>
-                  </div>
-                </div>
-                
-                <Separator />
-                
+              <CardContent>
                 {isLoadingProfile ? (
-                  <div className="flex justify-center py-4">
+                  <div className="flex justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
                 ) : (
                   <Form {...profileForm}>
-                    <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
+                    <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
                       <FormField
                         control={profileForm.control}
                         name="name"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Full Name</FormLabel>
+                            <FormLabel className="text-base">Full Name</FormLabel>
                             <FormControl>
-                              <div className="flex items-center">
-                                <UserIcon className="mr-2 h-4 w-4 text-gray-500" />
-                                <Input {...field} />
+                              <div className="relative">
+                                <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <Input 
+                                  {...field} 
+                                  className="pl-10 h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-500 transition-colors"
+                                />
                               </div>
                             </FormControl>
                             <FormMessage />
@@ -219,26 +236,19 @@ export default function Profile() {
                         )}
                       />
                       
-                      <FormField
-                        control={profileForm.control}
-                        name="email"
-                        render={({ field }) => (
-                          <FormItem>
-                            <FormLabel>Email Address</FormLabel>
-                            <FormControl>
-                              <div className="flex items-center">
-                                <Mail className="mr-2 h-4 w-4 text-gray-500" />
-                                <Input {...field} />
-                              </div>
-                            </FormControl>
-                            <FormMessage />
-                          </FormItem>
-                        )}
-                      />
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                          <Mail className="h-5 w-5 text-blue-500" />
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">{profile?.email}</p>
+                            <p className="text-xs mt-1">Email can only be changed by system administrator</p>
+                          </div>
+                        </div>
+                      </div>
                       
                       <Button 
                         type="submit" 
-                        className="mt-4"
+                        className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white transition-all duration-300 hover:scale-105"
                         disabled={updateProfileMutation.isPending}
                       >
                         {updateProfileMutation.isPending && (
@@ -254,24 +264,30 @@ export default function Profile() {
           </TabsContent>
           
           <TabsContent value="security" className="space-y-6">
-            <Card>
+            <Card className="hover:shadow-lg transition-all duration-300 animate-fadeIn">
               <CardHeader>
-                <CardTitle>Password</CardTitle>
+                <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                  Password
+                </CardTitle>
                 <CardDescription>Update your password</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent>
                 <Form {...passwordForm}>
-                  <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                  <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-6">
                     <FormField
                       control={passwordForm.control}
                       name="currentPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Current Password</FormLabel>
+                          <FormLabel className="text-base">Current Password</FormLabel>
                           <FormControl>
-                            <div className="flex items-center">
-                              <Key className="mr-2 h-4 w-4 text-gray-500" />
-                              <Input type="password" {...field} />
+                            <div className="relative">
+                              <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                              <Input 
+                                type="password" 
+                                {...field} 
+                                className="pl-10 h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-500 transition-colors"
+                              />
                             </div>
                           </FormControl>
                           <FormMessage />
@@ -284,11 +300,15 @@ export default function Profile() {
                       name="newPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>New Password</FormLabel>
+                          <FormLabel className="text-base">New Password</FormLabel>
                           <FormControl>
-                            <div className="flex items-center">
-                              <Key className="mr-2 h-4 w-4 text-gray-500" />
-                              <Input type="password" {...field} />
+                            <div className="relative">
+                              <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                              <Input 
+                                type="password" 
+                                {...field} 
+                                className="pl-10 h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-500 transition-colors"
+                              />
                             </div>
                           </FormControl>
                           <FormDescription>
@@ -304,11 +324,15 @@ export default function Profile() {
                       name="confirmPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Confirm New Password</FormLabel>
+                          <FormLabel className="text-base">Confirm New Password</FormLabel>
                           <FormControl>
-                            <div className="flex items-center">
-                              <Key className="mr-2 h-4 w-4 text-gray-500" />
-                              <Input type="password" {...field} />
+                            <div className="relative">
+                              <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                              <Input 
+                                type="password" 
+                                {...field} 
+                                className="pl-10 h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-500 transition-colors"
+                              />
                             </div>
                           </FormControl>
                           <FormMessage />
@@ -318,7 +342,7 @@ export default function Profile() {
                     
                     <Button 
                       type="submit" 
-                      className="mt-4"
+                      className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white transition-all duration-300 hover:scale-105"
                       disabled={updatePasswordMutation.isPending}
                     >
                       {updatePasswordMutation.isPending && (
@@ -331,38 +355,60 @@ export default function Profile() {
               </CardContent>
             </Card>
             
-            <Card>
+            <Card className="hover:shadow-lg transition-all duration-300 animate-fadeIn">
               <CardHeader>
-                <CardTitle>Account Security</CardTitle>
+                <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                  Account Security
+                </CardTitle>
                 <CardDescription>Manage your account security settings</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium">Role</h4>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-                      <Shield className="h-4 w-4 mr-1 text-primary" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <Shield className="h-6 w-6 text-blue-500" />
+                      <h4 className="font-medium text-lg">Role</h4>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       Administrator
                     </p>
                   </div>
                   
-                  <div>
-                    <h4 className="font-medium">Last Login</h4>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <Clock className="h-6 w-6 text-blue-500" />
+                      <h4 className="font-medium text-lg">Last Login</h4>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       {new Date().toLocaleString()}
                     </p>
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="border-t px-6 py-4">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  If you notice any suspicious activity on your account, please contact the system administrator immediately.
-                </p>
+              <CardFooter className="border-t px-6 py-4 bg-gray-50 dark:bg-gray-800">
+                <div className="flex items-start space-x-3">
+                  <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/20">
+                    <Key className="h-5 w-5 text-blue-500" />
+                  </div>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    If you notice any suspicious activity on your account, please contact the system administrator immediately.
+                  </p>
+                </div>
               </CardFooter>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out forwards;
+        }
+      `}</style>
     </AdminLayout>
   );
 }
