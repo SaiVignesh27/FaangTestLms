@@ -13,6 +13,7 @@ import { Alert, AlertDescription, AlertTitle } from '@/components/ui/alert';
 import { AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 import CodeEditor from '@/components/editor/CodeEditor';
+import { useToast } from '@/components/ui/use-toast';
 
 interface Question {
   type: 'mcq' | 'fill' | 'code';
@@ -56,6 +57,8 @@ export default function AssignmentView() {
     return now;
   });
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
+  const [showResults, setShowResults] = useState(false);
+  const [results, setResults] = useState<Result | null>(null);
 
   const { data: assignment, isLoading } = useQuery<Assignment>({
     queryKey: [`/api/student/assignments/${id}`],
@@ -154,90 +157,47 @@ export default function AssignmentView() {
     localStorage.setItem(`answers-${id}`, JSON.stringify(answers));
   }, [answers, id]);
 
+  const { toast } = useToast();
+
   const submitAssignment = useMutation({
     mutationFn: async () => {
-      if (!assignment || !user) throw new Error('Assignment or user not found');
-
-      const questionResults = assignment.questions.map((question, index) => {
-        const dbIndex = index;
-        const answerKey = `q${dbIndex + 1}`; // Use 1-based index for answer keys
-        const answer = answers[answerKey];
-        let isCorrect = false;
-        let feedback = '';
-        let processedAnswer = answer;
-        let correctAnswer = question.correctAnswer;
-
-        if (!answer) {
-          return {
-            questionId: question._id || dbIndex.toString(),
-            answer: '',
-            isCorrect: false,
-            points: 0,
-            feedback: 'No answer provided',
-            correctAnswer: question.correctAnswer
-          };
-        }
-
-        if (question.type === 'mcq') {
-          const selectedIndex = question.options?.findIndex(opt => opt === answer) ?? -1;
-          const correctIndex = parseInt(correctAnswer.toString());
-          isCorrect = selectedIndex === correctIndex;
-          feedback = isCorrect ? 'Correct' : `Incorrect. Correct answer: ${question.options?.[correctIndex] || correctAnswer}`;
-        } else if (question.type === 'fill') {
-          const studentStr = typeof answer === 'string' ? answer : '';
-          const correctStr = typeof correctAnswer === 'string' ? correctAnswer : '';
-          isCorrect = studentStr.trim().toLowerCase() === correctStr.trim().toLowerCase();
-          feedback = isCorrect ? 'Correct' : `Incorrect. Correct answer: ${correctAnswer}`;
-        } else if (question.type === 'code') {
-          try {
-            const parsedAnswer = typeof answer === 'string' ? JSON.parse(answer) : {};
-            const output = parsedAnswer.output || '';
-            const code = parsedAnswer.code || '';
-            const correctAnswerStr = typeof question.correctAnswer === 'string' ? question.correctAnswer : '';
-            isCorrect = output.trim() === correctAnswerStr.trim();
-            feedback = isCorrect ? 'Correct' : `Incorrect. Expected output: ${correctAnswerStr}`;
-            processedAnswer = JSON.stringify({ code, output });
-          } catch (e) {
-            feedback = 'Invalid code submission';
-          }
-        }
-
-        return {
-          questionId: question._id || dbIndex.toString(),
-          answer: processedAnswer,
-          isCorrect,
-          points: isCorrect ? (question.points || 1) : 0,
-          feedback,
-          correctAnswer: question.type === 'mcq' ? question.options?.[parseInt(correctAnswer.toString())] || correctAnswer : correctAnswer
-        };
+      const timeSpent = Math.floor((Date.now() - startTime) / 1000); // Calculate time spent in seconds
+      const response = await apiRequest('POST', `/api/assignments/${id}/submit`, {
+        answers,
+        timeSpent
       });
-
-      const total = questionResults.reduce((sum, q) => sum + q.points, 0);
-      const max = assignment.questions.reduce((sum, q) => sum + (q.points || 1), 0);
-
-      // Calculate time spent in seconds
-      const timeSpent = Math.floor((Date.now() - startTime) / 1000);
-
-      return apiRequest('POST', '/api/student/results', {
-        studentId: user._id,
-        courseId: assignment.courseId,
-        assignmentId: id,
-        type: 'assignment',
-        answers: questionResults,
-        status: 'completed',
-        score: Math.round((total / max) * 100),
-        maxScore: max,
-        submittedAt: new Date(),
-        studentName: user.name,
-        title: assignment.title,
-        timeSpent: timeSpent // Add time spent to the results
-      });
+      const data = await response.json();
+      return data as { submission: Result; results: any[]; score: number; scorePercentage: number; maxScore: number };
     },
-    onSuccess: () => {
+    onError: (error: any) => {
+      if (error.response?.status === 400 && error.response?.data?.submission) {
+        // Redirect to results page for existing submission
+        setLocation(`/student/assignments/${id}/results`);
+        toast({
+          title: "Assignment Already Submitted",
+          description: "You have already submitted this assignment. Redirecting to results...",
+          variant: "default"
+        });
+      } else {
+        toast({
+          title: "Error",
+          description: "Failed to submit assignment. Please try again.",
+          variant: "destructive"
+        });
+      }
+    },
+    onSuccess: (data) => {
+      // Clear saved answers and start time
       localStorage.removeItem(`answers-${id}`);
-      localStorage.removeItem(`startTime-${id}`); // Clean up start time
-      queryClient.invalidateQueries();
+      localStorage.removeItem(`startTime-${id}`);
+      
+      // Redirect to results page
       setLocation(`/student/assignments/${id}/results`);
+      toast({
+        title: "Success",
+        description: "Assignment submitted successfully! Redirecting to results...",
+        variant: "default"
+      });
     }
   });
 

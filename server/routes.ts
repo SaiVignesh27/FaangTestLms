@@ -1492,12 +1492,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           testId: result.testId,
           assignmentId: result.assignmentId,
           score: result.score || 0, // Include 0 scores
-          completedAt: result.submittedAt
+          completedAt: result.submittedAt,
+          timeSpent: result.timeSpent || 0 // Add timeSpent from result
         };
 
-        // Update completedAt if this is a more recent submission
+        // Update completedAt and timeSpent if this is a more recent submission
         if (result.submittedAt > entry.completedAt) {
           entry.completedAt = result.submittedAt;
+          entry.timeSpent = result.timeSpent || 0;
         }
 
         leaderboardMap.set(key, entry);
@@ -1869,12 +1871,14 @@ export async function registerRoutes(app: Express): Promise<Server> {
           testId: result.testId,
           assignmentId: result.assignmentId,
           score: result.score || 0, // Include 0 scores
-          completedAt: result.submittedAt
+          completedAt: result.submittedAt,
+          timeSpent: result.timeSpent || 0 // Add timeSpent from result
         };
 
-        // Update completedAt if this is a more recent submission
+        // Update completedAt and timeSpent if this is a more recent submission
         if (result.submittedAt > entry.completedAt) {
           entry.completedAt = result.submittedAt;
+          entry.timeSpent = result.timeSpent || 0;
         }
 
         leaderboardMap.set(key, entry);
@@ -2214,30 +2218,76 @@ export async function registerRoutes(app: Express): Promise<Server> {
   app.post('/api/assignments/:assignmentId/submit', authenticateUser, async (req: Request, res: Response) => {
     try {
       const { assignmentId } = req.params;
-      const { answers } = req.body;
+      const { answers, timeSpent } = req.body;
       const userId = (req as any).user._id;
 
-      const assignment = await Assignment.findById(assignmentId);
+      if (!answers || typeof answers !== 'object') {
+        return res.status(400).json({ error: 'Invalid answers format' });
+      }
+
+      console.log('Submitting assignment:', { assignmentId, userId, answers, timeSpent });
+
+      const assignment = await mongoStorage.getAssignment(assignmentId, (req as any).user);
       if (!assignment) {
+        console.error('Assignment not found:', assignmentId);
         return res.status(404).json({ error: 'Assignment not found' });
       }
 
+      // Check for existing submission
+      const existingSubmission = await mongoStorage.listResults({
+        studentId: userId,
+        assignmentId,
+        type: 'assignment'
+      }).then(results => results[0]);
+
+      if (existingSubmission) {
+        console.log('Existing submission found:', existingSubmission._id);
+        return res.status(400).json({ 
+          error: 'Assignment already submitted',
+          submission: existingSubmission
+        });
+      }
+
       // Process answers and execute code if needed
-      const processedAnswers = await Promise.all(answers.map(async (answer: any, index: number) => {
-        const question = assignment.questions[index];
+      const processedAnswers = await Promise.all(assignment.questions.map(async (question: any, index: number) => {
+        const answerKey = `q${index + 1}`;
+        const answer = answers[answerKey];
+        
+        if (!question) {
+          console.error('Question not found at index:', index);
+          throw new Error(`Question not found at index ${index}`);
+        }
+
+        console.log('Processing answer:', {
+          questionType: question.type,
+          answerKey,
+          rawAnswer: answer
+        });
         
         // For code questions
         if (question.type === 'code') {
-          const answerValue = typeof answer === 'string' ? JSON.parse(answer) : answer;
-          // Store only the output value
-          const output = answerValue.output;
+          let answerValue;
+          try {
+            answerValue = typeof answer === 'string' ? JSON.parse(answer) : answer;
+          } catch (e) {
+            console.error('Failed to parse code answer:', e);
+            answerValue = { code: '', output: '' };
+          }
+          
+          // Store both code and output
+          const code = answerValue.code || '';
+          const output = answerValue.output || '';
           
           // Compare output with expected output
-          const isCorrect = output.trim() === question.correctAnswer.trim();
+          const isCorrect = typeof question.correctAnswer === 'string' && 
+            output.trim() === question.correctAnswer.trim();
           
           return {
             questionId: index.toString(),
-            answer: output, // Store only the output value
+            answer: {
+              code,
+              output
+            },
             isCorrect,
             points: isCorrect ? question.points : 0,
             feedback: isCorrect 
@@ -2248,7 +2298,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
         }
         
         // For non-code questions
-        const answerValue = answer.answer || answer;
+        let answerValue;
+        if (question.type === 'mcq') {
+          // For MCQ, the answer should be the selected option
+          answerValue = answer?.selectedOption || answer || '';
+        } else {
+          // For fill-in-blank, use the answer directly
+          answerValue = answer?.answer || answer || '';
+        }
+
         let isCorrect = false;
 
         if (question.type === 'fill') {
@@ -2256,9 +2314,21 @@ export async function registerRoutes(app: Express): Promise<Server> {
           const studentAnswer = String(answerValue).toLowerCase().trim();
           const correctAnswer = String(question.correctAnswer).toLowerCase().trim();
           isCorrect = studentAnswer === correctAnswer;
+
+          console.log('Fill-in-blank validation:', {
+            studentAnswer,
+            correctAnswer,
+            isCorrect
+          });
         } else if (question.type === 'mcq') {
           // For MCQ, do exact comparison
           isCorrect = question.correctAnswer === answerValue;
+          
+          console.log('MCQ validation:', {
+            studentAnswer: answerValue,
+            correctAnswer: question.correctAnswer,
+            isCorrect
+          });
         }
 
         return {
@@ -2273,36 +2343,57 @@ export async function registerRoutes(app: Express): Promise<Server> {
         };
       }));
 
-      // Calculate total score
+      // Calculate total score and percentage
       const totalScore = processedAnswers.reduce((sum, answer) => sum + answer.points, 0);
+      const maxScore = assignment.questions.reduce((sum: number, q: any) => sum + q.points, 0);
+      const scorePercentage = Math.round((totalScore / maxScore) * 100);
 
-      // Save submission
-      const submission = new AssignmentSubmission({
+      console.log('Creating submission result:', {
         assignmentId,
-        userId,
+        studentId: userId,
+        score: totalScore,
+        scorePercentage,
+        maxScore,
+        answersCount: processedAnswers.length,
+        processedAnswers,
+        timeSpent
+      });
+
+      // Create submission result
+      const resultData = {
+        assignmentId,
+        studentId: userId,
+        type: 'assignment' as const,
+        status: 'completed' as const,
+        courseId: assignment.courseId,
+        title: assignment.title,
+        studentName: (req as any).user.name,
         answers: processedAnswers,
         score: totalScore,
-        maxScore: assignment.questions.reduce((sum: number, q: any) => sum + q.points, 0),
-        results: processedAnswers.map(answer => ({
-          questionId: answer.questionId,
-          questionText: assignment.questions[parseInt(answer.questionId)].text,
-          correctAnswer: answer.correctAnswer,
-          userAnswer: answer.answer,
-          isCorrect: answer.isCorrect,
-          points: answer.points
-        }))
-      });
-      await submission.save();
+        scorePercentage,
+        maxScore,
+        timeSpent: timeSpent || null,
+        submittedAt: new Date()
+      };
+
+      const submission = await mongoStorage.createResult(resultData);
+
+      console.log('Submission created successfully:', submission._id);
 
       res.json({
         submission,
         results: processedAnswers,
         score: totalScore,
-        maxScore: assignment.questions.reduce((sum: number, q: any) => sum + q.points, 0)
+        scorePercentage,
+        maxScore,
+        timeSpent: timeSpent || null
       });
     } catch (error) {
       console.error('Error submitting assignment:', error);
-      res.status(500).json({ error: 'Failed to submit assignment' });
+      res.status(500).json({ 
+        error: 'Failed to submit assignment',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
     }
   });
 

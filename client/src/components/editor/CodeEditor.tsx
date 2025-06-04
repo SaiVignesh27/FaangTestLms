@@ -206,12 +206,13 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     }
   };
 
-  // Add effect to update parent when code changes
-  useEffect(() => {
+  const handleCodeChange = (value: string | undefined) => {
+    const newCode = value || '';
+    setCode(newCode);
     if (onAnswerChange) {
-      onAnswerChange({ code });
+      onAnswerChange({ code: newCode });
     }
-  }, [code, onAnswerChange]);
+  };
 
   return (
     <div className="code-editor">
@@ -265,7 +266,7 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
             height="400px"
             language={selectedLanguage}
             value={code}
-            onChange={(value: string | undefined) => setCode(value || '')}
+            onChange={handleCodeChange}
             options={{
               readOnly,
               minimap: { enabled: false },

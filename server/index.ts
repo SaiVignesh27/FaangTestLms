@@ -53,41 +53,41 @@ app.use((req, res, next) => {
     await mongoStorage.connect();
     log('MongoDB connection established');
 
-    // Create the server first
-    const server = await registerRoutes(app);
+  // Create the server first
+  const server = await registerRoutes(app);
 
-    // Error handling middleware
-    app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
-      const status = err.status || err.statusCode || 500;
-      const message = err.message || "Internal Server Error";
+  // Error handling middleware
+  app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
+    const status = err.status || err.statusCode || 500;
+    const message = err.message || "Internal Server Error";
 
-      res.status(status).json({ message });
-      throw err;
-    });
+    res.status(status).json({ message });
+    throw err;
+  });
 
-    // Add a special handling for API routes to ensure they don't go to Vite
-    app.use('/api/*', (req, res) => {
-      res.status(404).json({ error: 'API endpoint not found' });
-    });
+  // Add a special handling for API routes to ensure they don't go to Vite
+  app.use('/api/*', (req, res) => {
+    res.status(404).json({ error: 'API endpoint not found' });
+  });
 
-    // Set up Vite or static serving after API routes
-    if (app.get("env") === "development") {
-      await setupVite(app, server);
-    } else {
-      serveStatic(app);
-    }
+  // Set up Vite or static serving after API routes
+  if (app.get("env") === "development") {
+    await setupVite(app, server);
+  } else {
+    serveStatic(app);
+  }
 
-    // ALWAYS serve the app on port 5000
-    // this serves both the API and the client.
-    // It is the only port that is not firewalled.
+  // ALWAYS serve the app on port 5000
+  // this serves both the API and the client.
+  // It is the only port that is not firewalled.
     const port = process.env.PORT || 5000;
-    server.listen({
-      port,
-      host: "0.0.0.0",
-      reusePort: true,
-    }, () => {
+  server.listen({
+    port,
+    host: "0.0.0.0",
+    reusePort: true,
+  }, () => {
       log(`Server started successfully on http://localhost:${port}`);
-    });
+  });
   } catch (error) {
     log(`Failed to start server: ${error instanceof Error ? error.message : 'Unknown error'}`);
     process.exit(1);

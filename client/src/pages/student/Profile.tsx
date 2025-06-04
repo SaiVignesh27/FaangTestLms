@@ -30,9 +30,8 @@ import { Input } from '@/components/ui/input';
 import { Button } from '@/components/ui/button';
 import { Tabs, TabsContent, TabsList, TabsTrigger } from '@/components/ui/tabs';
 import { Separator } from '@/components/ui/separator';
-import { Loader2, User as UserIcon, Key, Mail, GraduationCap } from 'lucide-react';
+import { Loader2, User as UserIcon, Key, Mail, GraduationCap, Clock } from 'lucide-react';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { Progress } from '@/components/ui/progress';
 
 // Form schema for profile update
 const profileFormSchema = z.object({
@@ -65,50 +64,6 @@ export default function Profile() {
     queryKey: ['/api/student/profile'],
   });
 
-  // Define stats type with default mock data for development
-  type UserStats = {
-    enrolledCourses: number;
-    completedCourses: number;
-    averageScore: number;
-    overallProgress: number;
-    testsCompleted: number;
-    assignmentsCompleted: number;
-    classesAttended: number;
-    codingPoints: number;
-    quizPoints: number;
-    participationPoints: number;
-    skills: {
-      javascript: number;
-      react: number;
-      nodejs: number;
-      database: number;
-      problemSolving: number;
-    };
-  };
-
-  // Fetch user progress and stats
-  const { data: stats, isLoading: isLoadingStats } = useQuery<UserStats>({
-    queryKey: ['/api/student/stats'],
-    initialData: {
-      enrolledCourses: 3,
-      completedCourses: 1,
-      averageScore: 86,
-      overallProgress: 65,
-      testsCompleted: 12,
-      assignmentsCompleted: 8,
-      classesAttended: 24,
-      codingPoints: 450,
-      quizPoints: 320,
-      participationPoints: 180,
-      skills: {
-        javascript: 80,
-        react: 65,
-        nodejs: 60,
-        database: 50,
-        problemSolving: 75
-      }
-    }
-  });
 
   // Setup form with validation for profile
   const profileForm = useForm<ProfileFormValues>({
@@ -203,62 +158,78 @@ export default function Profile() {
 
   return (
     <StudentLayout>
-      <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Profile Settings</h2>
-          <p className="text-gray-600 dark:text-gray-400">Manage your account details and track your progress</p>
+      <div className="space-y-8">
+        {/* Welcome Header */}
+        <div className="bg-gradient-to-r from-blue-600 to-blue-800 rounded-xl shadow-lg p-8 text-white animate-fadeIn">
+          <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
+            <div className="flex items-center space-x-4">
+              <Avatar className="h-20 w-20 border-4 border-white/20">
+                <AvatarFallback className="bg-white/20 text-white text-2xl">
+                  {isLoadingProfile ? <Loader2 className="h-8 w-8 animate-spin" /> : getUserInitials()}
+                </AvatarFallback>
+              </Avatar>
+              <div>
+                <h2 className="text-3xl font-bold mb-2">{profile?.name || 'Loading...'}</h2>
+                <p className="text-blue-100 flex items-center">
+                  <GraduationCap className="h-5 w-5 mr-2" />
+                  Student Account
+                </p>
+              </div>
+            </div>
+            <div className="mt-4 md:mt-0">
+              <p className="text-blue-100 flex items-center">
+                <Mail className="h-5 w-5 mr-2" />
+                {profile?.email || 'Loading...'}
+              </p>
+            </div>
+          </div>
         </div>
 
         <Tabs defaultValue="general" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 md:w-[600px]">
-            <TabsTrigger value="general">General</TabsTrigger>
-            <TabsTrigger value="security">Security</TabsTrigger>
-            <TabsTrigger value="progress">Progress</TabsTrigger>
+          <TabsList className="grid w-full grid-cols-2 md:w-[600px] bg-white dark:bg-gray-800 p-1 rounded-lg shadow-md">
+            <TabsTrigger 
+              value="general" 
+              className="data-[state=active]:bg-blue-500 data-[state=active]:text-white transition-all duration-300"
+            >
+              General
+            </TabsTrigger>
+            <TabsTrigger 
+              value="security" 
+              className="data-[state=active]:bg-blue-500 data-[state=active]:text-white transition-all duration-300"
+            >
+              Security
+            </TabsTrigger>
           </TabsList>
           
           <TabsContent value="general" className="space-y-6">
-            <Card>
+            <Card className="hover:shadow-lg transition-all duration-300 animate-fadeIn">
               <CardHeader>
-                <CardTitle>Profile Information</CardTitle>
+                <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                  Profile Information
+                </CardTitle>
                 <CardDescription>Update your personal information</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
-                <div className="flex flex-col md:flex-row gap-6 items-start md:items-center">
-                  <Avatar className="h-20 w-20 text-2xl">
-                    <AvatarFallback className="bg-primary text-white">
-                      {isLoadingProfile ? <Loader2 className="h-6 w-6 animate-spin" /> : getUserInitials()}
-                    </AvatarFallback>
-                  </Avatar>
-                  
-                  <div>
-                    <h3 className="font-medium text-lg">{profile?.name || 'Loading...'}</h3>
-                    <p className="text-gray-500 dark:text-gray-400">{profile?.email || 'Loading...'}</p>
-                    <p className="text-sm flex items-center mt-1">
-                      <GraduationCap className="h-4 w-4 text-primary mr-1" />
-                      <span>Student Account</span>
-                    </p>
-                  </div>
-                </div>
-                
-                <Separator />
-                
+              <CardContent>
                 {isLoadingProfile ? (
-                  <div className="flex justify-center py-4">
+                  <div className="flex justify-center py-8">
                     <Loader2 className="h-8 w-8 animate-spin text-primary" />
                   </div>
                 ) : (
                   <Form {...profileForm}>
-                    <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-4">
+                    <form onSubmit={profileForm.handleSubmit(onProfileSubmit)} className="space-y-6">
                       <FormField
                         control={profileForm.control}
                         name="name"
                         render={({ field }) => (
                           <FormItem>
-                            <FormLabel>Full Name</FormLabel>
+                            <FormLabel className="text-base">Full Name</FormLabel>
                             <FormControl>
-                              <div className="flex items-center">
-                                <UserIcon className="mr-2 h-4 w-4 text-gray-500" />
-                                <Input {...field} />
+                              <div className="relative">
+                                <UserIcon className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                                <Input 
+                                  {...field} 
+                                  className="pl-10 h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-500 transition-colors"
+                                />
                               </div>
                             </FormControl>
                             <FormMessage />
@@ -266,15 +237,19 @@ export default function Profile() {
                         )}
                       />
                       
-                      <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400">
-                        <Mail className="h-4 w-4" />
-                        <p className="text-gray-500 dark:text-gray-400">{profile?.email}</p>
+                      <div className="space-y-2">
+                        <div className="flex items-center space-x-2 text-sm text-gray-500 dark:text-gray-400 bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
+                          <Mail className="h-5 w-5 text-blue-500" />
+                          <div>
+                            <p className="font-medium text-gray-900 dark:text-white">{profile?.email}</p>
+                            <p className="text-xs mt-1">Email can only be changed by administrator</p>
+                          </div>
+                        </div>
                       </div>
-                      <p className="text-xs text-gray-500 dark:text-gray-400">Email can only be changed by administrator</p>
                       
                       <Button 
                         type="submit" 
-                        className="mt-4"
+                        className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white transition-all duration-300 hover:scale-105"
                         disabled={updateProfileMutation.isPending}
                       >
                         {updateProfileMutation.isPending && (
@@ -290,24 +265,30 @@ export default function Profile() {
           </TabsContent>
           
           <TabsContent value="security" className="space-y-6">
-            <Card>
+            <Card className="hover:shadow-lg transition-all duration-300 animate-fadeIn">
               <CardHeader>
-                <CardTitle>Password</CardTitle>
+                <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                  Password
+                </CardTitle>
                 <CardDescription>Update your password</CardDescription>
               </CardHeader>
-              <CardContent className="space-y-6">
+              <CardContent>
                 <Form {...passwordForm}>
-                  <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-4">
+                  <form onSubmit={passwordForm.handleSubmit(onPasswordSubmit)} className="space-y-6">
                     <FormField
                       control={passwordForm.control}
                       name="currentPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Current Password</FormLabel>
+                          <FormLabel className="text-base">Current Password</FormLabel>
                           <FormControl>
-                            <div className="flex items-center">
-                              <Key className="mr-2 h-4 w-4 text-gray-500" />
-                              <Input type="password" {...field} />
+                            <div className="relative">
+                              <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                              <Input 
+                                type="password" 
+                                {...field} 
+                                className="pl-10 h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-500 transition-colors"
+                              />
                             </div>
                           </FormControl>
                           <FormMessage />
@@ -320,11 +301,15 @@ export default function Profile() {
                       name="newPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>New Password</FormLabel>
+                          <FormLabel className="text-base">New Password</FormLabel>
                           <FormControl>
-                            <div className="flex items-center">
-                              <Key className="mr-2 h-4 w-4 text-gray-500" />
-                              <Input type="password" {...field} />
+                            <div className="relative">
+                              <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                              <Input 
+                                type="password" 
+                                {...field} 
+                                className="pl-10 h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-500 transition-colors"
+                              />
                             </div>
                           </FormControl>
                           <FormDescription>
@@ -340,11 +325,15 @@ export default function Profile() {
                       name="confirmPassword"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Confirm New Password</FormLabel>
+                          <FormLabel className="text-base">Confirm New Password</FormLabel>
                           <FormControl>
-                            <div className="flex items-center">
-                              <Key className="mr-2 h-4 w-4 text-gray-500" />
-                              <Input type="password" {...field} />
+                            <div className="relative">
+                              <Key className="absolute left-3 top-1/2 transform -translate-y-1/2 h-5 w-5 text-gray-400" />
+                              <Input 
+                                type="password" 
+                                {...field} 
+                                className="pl-10 h-12 bg-gray-50 dark:bg-gray-800 border-gray-200 dark:border-gray-700 focus:border-blue-500 dark:focus:border-blue-500 transition-colors"
+                              />
                             </div>
                           </FormControl>
                           <FormMessage />
@@ -354,7 +343,7 @@ export default function Profile() {
                     
                     <Button 
                       type="submit" 
-                      className="mt-4"
+                      className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900 text-white transition-all duration-300 hover:scale-105"
                       disabled={updatePasswordMutation.isPending}
                     >
                       {updatePasswordMutation.isPending && (
@@ -367,173 +356,60 @@ export default function Profile() {
               </CardContent>
             </Card>
             
-            <Card>
+            <Card className="hover:shadow-lg transition-all duration-300 animate-fadeIn">
               <CardHeader>
-                <CardTitle>Account Security</CardTitle>
+                <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                  Account Security
+                </CardTitle>
                 <CardDescription>Manage your account security settings</CardDescription>
               </CardHeader>
               <CardContent className="space-y-6">
-                <div className="space-y-4">
-                  <div>
-                    <h4 className="font-medium">Role</h4>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1 flex items-center">
-                      <GraduationCap className="h-4 w-4 mr-1 text-primary" />
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+                  <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <GraduationCap className="h-6 w-6 text-blue-500" />
+                      <h4 className="font-medium text-lg">Role</h4>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       Student
                     </p>
                   </div>
                   
-                  <div>
-                    <h4 className="font-medium">Last Login</h4>
-                    <p className="text-sm text-gray-500 dark:text-gray-400 mt-1">
+                  <div className="bg-gray-50 dark:bg-gray-800 p-6 rounded-lg">
+                    <div className="flex items-center space-x-3 mb-2">
+                      <Clock className="h-6 w-6 text-blue-500" />
+                      <h4 className="font-medium text-lg">Last Login</h4>
+                    </div>
+                    <p className="text-sm text-gray-500 dark:text-gray-400">
                       {new Date().toLocaleString()}
                     </p>
                   </div>
                 </div>
               </CardContent>
-              <CardFooter className="border-t px-6 py-4">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  If you notice any suspicious activity on your account, please contact your instructor or administrator immediately.
-                </p>
-              </CardFooter>
-            </Card>
-          </TabsContent>
-          
-          <TabsContent value="progress" className="space-y-6">
-            <Card>
-              <CardHeader>
-                <CardTitle>Learning Progress</CardTitle>
-                <CardDescription>Track your learning journey</CardDescription>
-              </CardHeader>
-              <CardContent className="space-y-6">
-                {isLoadingStats ? (
-                  <div className="flex justify-center py-4">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
+              <CardFooter className="border-t px-6 py-4 bg-gray-50 dark:bg-gray-800">
+                <div className="flex items-start space-x-3">
+                  <div className="p-2 rounded-full bg-blue-100 dark:bg-blue-900/20">
+                    <Key className="h-5 w-5 text-blue-500" />
                   </div>
-                ) : (
-                  <>
-                    <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-                      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                        <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Courses Enrolled</div>
-                        <div className="text-2xl font-bold">{stats?.enrolledCourses || 0}</div>
-                      </div>
-                      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                        <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Completed Courses</div>
-                        <div className="text-2xl font-bold">{stats?.completedCourses || 0}</div>
-                      </div>
-                      <div className="bg-gray-50 dark:bg-gray-800 p-4 rounded-lg">
-                        <div className="text-sm text-gray-500 dark:text-gray-400 mb-1">Average Score</div>
-                        <div className="text-2xl font-bold">{stats?.averageScore || 0}%</div>
-                      </div>
-                    </div>
-                    
-                    <div className="space-y-4 mt-6">
-                      <h4 className="font-medium">Overall Progress</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between text-sm">
-                          <span>Course Completion</span>
-                          <span className="font-medium">{stats?.overallProgress || 0}%</span>
-                        </div>
-                        <Progress value={stats?.overallProgress || 0} className="h-2" />
-                      </div>
-                      
-                      <h4 className="font-medium mt-4">Activity Summary</h4>
-                      <div className="space-y-2">
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm">Tests Completed</span>
-                          <span className="font-medium">{stats?.testsCompleted || 0}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm">Assignments Submitted</span>
-                          <span className="font-medium">{stats?.assignmentsCompleted || 0}</span>
-                        </div>
-                        <div className="flex justify-between items-center">
-                          <span className="text-sm">Classes Attended</span>
-                          <span className="font-medium">{stats?.classesAttended || 0}</span>
-                        </div>
-                      </div>
-                    </div>
-                    
-                    <div className="mt-6">
-                      <h4 className="font-medium mb-2">Learning Achievements</h4>
-                      <div className="grid grid-cols-2 sm:grid-cols-3 gap-2">
-                        <div className="bg-primary bg-opacity-10 text-primary rounded-lg p-3 text-center">
-                          <div className="font-semibold">{stats?.codingPoints || 0}</div>
-                          <div className="text-xs">Coding Points</div>
-                        </div>
-                        <div className="bg-secondary bg-opacity-10 text-secondary rounded-lg p-3 text-center">
-                          <div className="font-semibold">{stats?.quizPoints || 0}</div>
-                          <div className="text-xs">Quiz Points</div>
-                        </div>
-                        <div className="bg-warning bg-opacity-10 text-warning rounded-lg p-3 text-center">
-                          <div className="font-semibold">{stats?.participationPoints || 0}</div>
-                          <div className="text-xs">Participation</div>
-                        </div>
-                      </div>
-                    </div>
-                  </>
-                )}
-              </CardContent>
-            </Card>
-            
-            <Card>
-              <CardHeader>
-                <CardTitle>Skills Breakdown</CardTitle>
-                <CardDescription>Your progress in different skill areas</CardDescription>
-              </CardHeader>
-              <CardContent>
-                {isLoadingStats ? (
-                  <div className="flex justify-center py-4">
-                    <Loader2 className="h-8 w-8 animate-spin text-primary" />
-                  </div>
-                ) : (
-                  <div className="space-y-4">
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>JavaScript</span>
-                        <span className="font-medium">{stats?.skills?.javascript || 0}%</span>
-                      </div>
-                      <Progress value={stats?.skills?.javascript || 0} className="h-2" />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>React</span>
-                        <span className="font-medium">{stats?.skills?.react || 0}%</span>
-                      </div>
-                      <Progress value={stats?.skills?.react || 0} className="h-2" />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Node.js</span>
-                        <span className="font-medium">{stats?.skills?.nodejs || 0}%</span>
-                      </div>
-                      <Progress value={stats?.skills?.nodejs || 0} className="h-2" />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Database</span>
-                        <span className="font-medium">{stats?.skills?.database || 0}%</span>
-                      </div>
-                      <Progress value={stats?.skills?.database || 0} className="h-2" />
-                    </div>
-                    <div className="space-y-2">
-                      <div className="flex justify-between text-sm">
-                        <span>Problem Solving</span>
-                        <span className="font-medium">{stats?.skills?.problemSolving || 0}%</span>
-                      </div>
-                      <Progress value={stats?.skills?.problemSolving || 0} className="h-2" />
-                    </div>
-                  </div>
-                )}
-              </CardContent>
-              <CardFooter className="border-t px-6 py-4">
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Skill ratings are based on your performance in related tests, assignments, and courses.
-                </p>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">
+                    If you notice any suspicious activity on your account, please contact your instructor or administrator immediately.
+                  </p>
+                </div>
               </CardFooter>
             </Card>
           </TabsContent>
         </Tabs>
       </div>
+
+      <style>{`
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out forwards;
+        }
+      `}</style>
     </StudentLayout>
   );
 }

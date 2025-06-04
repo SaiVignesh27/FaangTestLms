@@ -238,66 +238,86 @@ export default function Courses() {
 
   return (
     <AdminLayout>
-      <div className="space-y-6">
-        <div className="flex items-center justify-between">
-          <div>
-            <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Course Management</h2>
-            <p className="text-gray-600 dark:text-gray-400">Create and manage learning courses</p>
+      <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
+        {/* Highlighted Header Section */}
+        <div className="bg-gradient-to-r from-white via-gray-50 to-gray-100 dark:from-gray-800 dark:via-gray-900 dark:to-gray-800 rounded-xl shadow-lg p-8 text-gray-900 dark:text-white border border-gray-200 dark:border-gray-700">
+          <div className="container mx-auto">
+            <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
+              <div className="space-y-1">
+                <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent dark:from-blue-400 dark:to-blue-600">
+                  Course Management
+                </h2>
+                <p className="text-sm text-gray-600 dark:text-gray-300">
+                  Create and manage learning courses
+                </p>
+              </div>
+              <Button 
+                onClick={() => setIsDialogOpen(true)}
+                className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-sm hover:shadow-md transition-all duration-200 mt-4 md:mt-0"
+              >
+                <Plus className="mr-2 h-4 w-4" /> Create Course
+              </Button>
+            </div>
           </div>
-          <Button onClick={() => setIsDialogOpen(true)}>
-            <Plus className="mr-2 h-4 w-4" /> Create Course
-          </Button>
         </div>
 
-        {isLoadingCourses ? (
-          <div className="flex justify-center py-12">
-            <Loader2 className="h-8 w-8 animate-spin text-primary" />
-          </div>
-        ) : (
-          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            {courses && courses.length > 0 ? (
-              courses.map((course) => (
-                <div key={course._id} className="relative group">
-                  <CourseCard
-                    id={course._id as string}
-                    title={course.title}
-                    description={course.description || ''}
-                    category={course.category || 'General'}
-                    categoryColor={getCategoryColor(course.category || '')}
-                    students={(course.assignedTo?.length || 0)}
-                    instructor={getInstructorDetails(course)}
-                    rating={4.8} // This would come from a ratings system
-                    imageUrl={course.image || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=300'}
-                  />
-                  <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all flex items-center justify-center opacity-0 group-hover:opacity-100">
-                    <Button 
-                      variant="secondary" 
-                      className="mr-2"
-                      onClick={() => setSelectedCourse(course)}
-                    >
-                      Edit
-                    </Button>
-                    <Button 
-                      variant="destructive"
-                      onClick={() => deleteCourseMutation.mutate(course._id as string)}
-                    >
-                      Delete
-                    </Button>
+        {/* Main Content */}
+        <div className="container mx-auto px-4 py-6 space-y-6">
+          {isLoadingCourses ? (
+            <div className="flex justify-center py-12">
+              <Loader2 className="h-8 w-8 animate-spin text-primary" />
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+              {courses && courses.length > 0 ? (
+                courses.map((course) => (
+                  <div key={course._id} className="relative group transition-all duration-200 hover:scale-[1.02]">
+                    <CourseCard
+                      id={course._id as string}
+                      title={course.title}
+                      description={course.description || ''}
+                      category={course.category || 'General'}
+                      categoryColor={getCategoryColor(course.category || '')}
+                      students={(course.assignedTo?.length || 0)}
+                      instructor={getInstructorDetails(course)}
+                      rating={4.8}
+                      imageUrl={course.image || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=300'}
+                    />
+                    <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-lg">
+                      <Button 
+                        variant="secondary" 
+                        className="mr-2 shadow-sm hover:shadow-md transition-shadow"
+                        onClick={() => setSelectedCourse(course)}
+                      >
+                        Edit
+                      </Button>
+                      <Button 
+                        variant="destructive"
+                        className="shadow-sm hover:shadow-md transition-shadow"
+                        onClick={() => deleteCourseMutation.mutate(course._id as string)}
+                      >
+                        Delete
+                      </Button>
+                    </div>
                   </div>
+                ))
+              ) : (
+                <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
+                  <School className="h-12 w-12 mb-4 opacity-20" />
+                  <h3 className="text-lg font-medium">No courses found</h3>
+                  <p className="text-sm">Create your first course to get started</p>
+                  <Button 
+                    variant="outline" 
+                    className="mt-4 shadow-sm hover:shadow-md transition-shadow"
+                    onClick={() => setIsDialogOpen(true)}
+                  >
+                    <Plus className="mr-2 h-4 w-4" /> Create Course
+                  </Button>
                 </div>
-              ))
-            ) : (
-              <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
-                <School className="h-12 w-12 mb-4 opacity-20" />
-                <h3 className="text-lg font-medium">No courses found</h3>
-                <p className="text-sm">Create your first course to get started</p>
-                <Button variant="outline" className="mt-4" onClick={() => setIsDialogOpen(true)}>
-                  <Plus className="mr-2 h-4 w-4" /> Create Course
-                </Button>
-              </div>
-            )}
-          </div>
-        )}
+              )}
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Create/Edit Course Dialog */}
@@ -307,25 +327,33 @@ export default function Courses() {
           setSelectedCourse(null);
         }
       }}>
-        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col">
-          <DialogHeader>
-            <DialogTitle>{selectedCourse ? 'Edit Course' : 'Create New Course'}</DialogTitle>
-            <DialogDescription>
-              {selectedCourse 
-                ? 'Update course details and student assignments' 
-                : 'Fill out the form to create a new course'}
-            </DialogDescription>
-          </DialogHeader>
+        <DialogContent className="sm:max-w-[600px] max-h-[90vh] flex flex-col p-0 gap-0 shadow-2xl">
+          <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-6 rounded-t-lg shadow-sm">
+            <DialogHeader>
+              <DialogTitle className="text-xl font-semibold text-white">
+                {selectedCourse ? 'Edit Course' : 'Create New Course'}
+              </DialogTitle>
+              <DialogDescription className="text-blue-100">
+                {selectedCourse 
+                  ? 'Update course details and student assignments' 
+                  : 'Fill out the form to create a new course'}
+              </DialogDescription>
+            </DialogHeader>
+          </div>
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 overflow-y-auto pr-6 -mr-6">
+            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-4 p-6 overflow-y-auto pr-6 -mr-6">
               <FormField
                 control={form.control}
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Course Title</FormLabel>
+                    <FormLabel className="text-sm font-medium">Course Title</FormLabel>
                     <FormControl>
-                      <Input placeholder="JavaScript Fundamentals" {...field} />
+                      <Input 
+                        placeholder="JavaScript Fundamentals" 
+                        {...field} 
+                        className="focus-visible:ring-blue-500"
+                      />
                     </FormControl>
                     <FormMessage />
                   </FormItem>
@@ -336,11 +364,11 @@ export default function Courses() {
                 name="description"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel>Description</FormLabel>
+                    <FormLabel className="text-sm font-medium">Description</FormLabel>
                     <FormControl>
                       <Textarea 
                         placeholder="A comprehensive course covering JavaScript basics to advanced concepts"
-                        className="resize-none"
+                        className="resize-none focus-visible:ring-blue-500"
                         {...field}
                         value={field.value || ''}
                       />
@@ -349,15 +377,20 @@ export default function Courses() {
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
                 <FormField
                   control={form.control}
                   name="category"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Category</FormLabel>
+                      <FormLabel className="text-sm font-medium">Category</FormLabel>
                       <FormControl>
-                        <Input placeholder="JavaScript" {...field} value={field.value || ''} />
+                        <Input 
+                          placeholder="JavaScript" 
+                          {...field} 
+                          value={field.value || ''}
+                          className="focus-visible:ring-blue-500"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
@@ -368,164 +401,171 @@ export default function Courses() {
                   name="image"
                   render={({ field }) => (
                     <FormItem>
-                      <FormLabel>Image URL</FormLabel>
+                      <FormLabel className="text-sm font-medium">Image URL</FormLabel>
                       <FormControl>
-                        <Input placeholder="https://example.com/image.jpg" {...field} value={field.value || ''} />
+                        <Input 
+                          placeholder="https://example.com/image.jpg" 
+                          {...field} 
+                          value={field.value || ''}
+                          className="focus-visible:ring-blue-500"
+                        />
                       </FormControl>
                       <FormMessage />
                     </FormItem>
                   )}
                 />
               </div>
-              
-      <FormField
-        control={form.control}
-        name="instructor.name"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Instructor Name</FormLabel>
-            <FormControl>
-              <Input placeholder="Enter instructor name" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
 
-      <FormField
-        control={form.control}
-        name="instructor.title"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Instructor Title</FormLabel>
-            <FormControl>
-              <Input placeholder="e.g. Lead Instructor" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="instructor.initials"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Instructor Initials</FormLabel>
-            <FormControl>
-              <Input placeholder="e.g. JD" maxLength={2} {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
-
-      <FormField
-        control={form.control}
-        name="learningObjectives"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Learning Objectives (one per line)</FormLabel>
-            <FormControl>
-              <Textarea 
-                placeholder="Enter learning objectives" 
-                {...field}
-                onChange={(e) => field.onChange(e.target.value.split('\n'))}
-                value={field.value?.join('\n')}
+              <FormField
+                control={form.control}
+                name="instructor.name"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">Instructor Name</FormLabel>
+                    <FormControl>
+                      <Input placeholder="Enter instructor name" {...field} className="focus-visible:ring-blue-500" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
 
-      <FormField
-        control={form.control}
-        name="prerequisites"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Prerequisites (one per line)</FormLabel>
-            <FormControl>
-              <Textarea 
-                placeholder="Enter prerequisites" 
-                {...field}
-                onChange={(e) => field.onChange(e.target.value.split('\n'))}
-                value={field.value?.join('\n')}
+              <FormField
+                control={form.control}
+                name="instructor.title"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">Instructor Title</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. Lead Instructor" {...field} className="focus-visible:ring-blue-500" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
               />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
 
-      <FormField
-        control={form.control}
-        name="skillLevel"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Skill Level</FormLabel>
-            <Select onValueChange={field.onChange} defaultValue={field.value}>
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select skill level" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="beginner">Beginner</SelectItem>
-                <SelectItem value="intermediate">Intermediate</SelectItem>
-                <SelectItem value="advanced">Advanced</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+              <FormField
+                control={form.control}
+                name="instructor.initials"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">Instructor Initials</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. JD" maxLength={2} {...field} className="focus-visible:ring-blue-500" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-      <FormField
-        control={form.control}
-        name="duration"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Duration</FormLabel>
-            <FormControl>
-              <Input placeholder="e.g. 4 weeks" {...field} />
-            </FormControl>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+              <FormField
+                control={form.control}
+                name="learningObjectives"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">Learning Objectives (one per line)</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Enter learning objectives" 
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value.split('\n'))}
+                        value={field.value?.join('\n')}
+                        className="resize-none focus-visible:ring-blue-500"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
-      <FormField
-        control={form.control}
-        name="visibility"
-        render={({ field }) => (
-          <FormItem>
-            <FormLabel>Visibility</FormLabel>
-            <Select 
-              onValueChange={field.onChange} 
-              defaultValue={field.value}
-              value={field.value}
-            >
-              <FormControl>
-                <SelectTrigger>
-                  <SelectValue placeholder="Select visibility" />
-                </SelectTrigger>
-              </FormControl>
-              <SelectContent>
-                <SelectItem value="public">Public (All Students)</SelectItem>
-                <SelectItem value="private">Private (Selected Students Only)</SelectItem>
-                <SelectItem value="restricted">Restricted (Admins only)</SelectItem>
-              </SelectContent>
-            </Select>
-            <FormMessage />
-          </FormItem>
-        )}
-      />
+              <FormField
+                control={form.control}
+                name="prerequisites"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">Prerequisites (one per line)</FormLabel>
+                    <FormControl>
+                      <Textarea 
+                        placeholder="Enter prerequisites" 
+                        {...field}
+                        onChange={(e) => field.onChange(e.target.value.split('\n'))}
+                        value={field.value?.join('\n')}
+                        className="resize-none focus-visible:ring-blue-500"
+                      />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="skillLevel"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">Skill Level</FormLabel>
+                    <Select onValueChange={field.onChange} defaultValue={field.value}>
+                      <FormControl>
+                        <SelectTrigger className="focus-visible:ring-blue-500">
+                          <SelectValue placeholder="Select skill level" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="beginner">Beginner</SelectItem>
+                        <SelectItem value="intermediate">Intermediate</SelectItem>
+                        <SelectItem value="advanced">Advanced</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="duration"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">Duration</FormLabel>
+                    <FormControl>
+                      <Input placeholder="e.g. 4 weeks" {...field} className="focus-visible:ring-blue-500" />
+                    </FormControl>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
+
+              <FormField
+                control={form.control}
+                name="visibility"
+                render={({ field }) => (
+                  <FormItem>
+                    <FormLabel className="text-sm font-medium">Visibility</FormLabel>
+                    <Select 
+                      onValueChange={field.onChange} 
+                      defaultValue={field.value}
+                      value={field.value}
+                    >
+                      <FormControl>
+                        <SelectTrigger className="focus-visible:ring-blue-500">
+                          <SelectValue placeholder="Select visibility" />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        <SelectItem value="public">Public (All Students)</SelectItem>
+                        <SelectItem value="private">Private (Selected Students Only)</SelectItem>
+                        <SelectItem value="restricted">Restricted (Admins only)</SelectItem>
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                )}
+              />
 
               {form.watch('visibility') === 'private' && (
-                <div>
-                  <Label>Assign to Students</Label>
-                  <div className="mt-2 border rounded-md p-4 max-h-60 overflow-y-auto">
+                <div className="mt-4">
+                  <Label className="text-sm font-medium">Assign to Students</Label>
+                  <div className="mt-2 border rounded-md p-4 max-h-60 overflow-y-auto shadow-sm">
                     {isLoadingStudents ? (
                       <div className="flex justify-center py-4">
                         <Loader2 className="h-4 w-4 animate-spin text-primary" />
@@ -563,11 +603,23 @@ export default function Courses() {
               )}
             </form>
           </Form>
-          <DialogFooter className="mt-4">
+          <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t px-6 pb-6">
+            <Button 
+              type="button"
+              variant="outline" 
+              onClick={() => {
+                setIsDialogOpen(false);
+                setSelectedCourse(null);
+              }}
+              className="w-full sm:w-auto hover:bg-gray-100 dark:hover:bg-gray-800 shadow-sm"
+            >
+              Cancel
+            </Button>
             <Button 
               type="submit" 
               disabled={createCourseMutation.isPending || updateCourseMutation.isPending}
               onClick={form.handleSubmit(onSubmit)}
+              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-shadow"
             >
               {(createCourseMutation.isPending || updateCourseMutation.isPending) && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />

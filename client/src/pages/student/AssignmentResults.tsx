@@ -80,7 +80,7 @@ export default function AssignmentResults() {
   const totalQuestions = assignment?.questions?.length || 0;
   const correctAnswers = result.answers?.filter((a: Answer) => a.isCorrect).length || 0;
   const incorrectAnswers = totalQuestions - correctAnswers;
-  const scorePercentage = result.score || 0;
+  const scorePercentage = Math.round((result.score / result.maxScore) * 100) || 0;
   
   // Format time spent
   const formatTimeSpent = (seconds: number | undefined) => {
@@ -114,6 +114,19 @@ export default function AssignmentResults() {
     return "Needs improvement";
   };
 
+  const getScoreColor = (score: number) => {
+    if (score >= 80) return "text-green-600";
+    if (score >= 60) return "text-yellow-600";
+    return "text-red-600";
+  };
+
+  const getScoreLabel = (score: number) => {
+    if (score >= 80) return "Excellent";
+    if (score >= 60) return "Good";
+    if (score >= 40) return "Needs improvement";
+    return "Poor";
+  };
+
   return (
     <StudentLayout>
       <div className="space-y-8">
@@ -143,11 +156,11 @@ export default function AssignmentResults() {
                 <div className="space-y-1">
                   <Badge className={`text-lg px-3 py-1 ${getScoreBadgeColor(scorePercentage)} animate-bounce`}>
                     {scorePercentage}%
-                  </Badge>
-                  <p className="text-sm text-muted-foreground">{getScoreMessage(scorePercentage)}</p>
+                       </Badge>
+                     <p className="text-sm text-muted-foreground">{getScoreMessage(scorePercentage)}</p>
                 </div>
-                <div className="flex items-center text-yellow-500">
-                  <Star className="h-5 w-5 mr-1" fill="currentColor" />
+                   <div className="flex items-center text-yellow-500">
+                      <Star className="h-5 w-5 mr-1" fill="currentColor" />
                   <span className="font-semibold">{result.maxScore} points</span>
                 </div>
               </div>
@@ -196,7 +209,7 @@ export default function AssignmentResults() {
                     <span>Total Questions</span>
                   </div>
                   <span className="font-semibold">{totalQuestions}</span>
-                </div>
+                   </div>
               </div>
             </CardContent>
           </Card>
@@ -241,32 +254,32 @@ export default function AssignmentResults() {
           </Card>
         </div>
 
-        <div className="space-y-6">
+          <div className="space-y-6">
           <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md">
             <h3 className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
               Question Review
             </h3>
             <div className="flex items-center gap-3">
               <Badge variant="outline" className="flex items-center gap-1 px-3 py-1 border-green-200 dark:border-green-800">
-                <CheckCircle className="h-3 w-3 text-green-500" />
-                Correct
-              </Badge>
+                  <CheckCircle className="h-3 w-3 text-green-500" />
+                  Correct
+                </Badge>
               <Badge variant="outline" className="flex items-center gap-1 px-3 py-1 border-red-200 dark:border-red-800">
-                <XCircle className="h-3 w-3 text-red-500" />
-                Incorrect
-              </Badge>
+                  <XCircle className="h-3 w-3 text-red-500" />
+                  Incorrect
+                </Badge>
+              </div>
             </div>
-          </div>
 
           {assignment?.questions?.map((question: any, index: number) => {
-            const answer = Array.isArray(result.answers)
-              ? result.answers.find(
-                  (a: Answer) => a.questionId === (question._id || index.toString()),
-                )
-              : null;
+              const answer = Array.isArray(result.answers)
+                ? result.answers.find(
+                    (a: Answer) => a.questionId === (question._id || index.toString()),
+                  )
+                : null;
             const isCorrect = answer?.isCorrect;
 
-            return (
+              return (
               <Card 
                 key={index} 
                 className={`border transition-all duration-300 hover:shadow-lg animate-fadeIn ${
@@ -277,20 +290,20 @@ export default function AssignmentResults() {
                 style={{ animationDelay: `${index * 100}ms` }}
               >
                 <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900">
-                  <div className="flex items-center justify-between">
+                    <div className="flex items-center justify-between">
                     <CardTitle className="text-lg flex items-center gap-2">
                       <span className="w-8 h-8 flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full text-sm">
                         {index + 1}
                       </span>
-                      Question {index + 1}
-                    </CardTitle>
+                        Question {index + 1}
+                      </CardTitle>
                     <Badge className={`px-3 py-1 ${
                       isCorrect 
                         ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" 
                         : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
                     }`}>
-                      {isCorrect ? "Correct" : "Incorrect"}
-                    </Badge>
+                          {isCorrect ? "Correct" : "Incorrect"}
+                        </Badge>
                   </div>
                 </CardHeader>
                 <CardContent className="pt-6">
@@ -334,8 +347,8 @@ export default function AssignmentResults() {
                                   )}
                                   {question.correctAnswer === option && !isCorrect && (
                                     <span className="text-sm text-green-600">✓ Correct Answer</span>
-                                  )}
-                                </div>
+                      )}
+                    </div>
                               </div>
                             </li>
                           ))}
@@ -350,15 +363,15 @@ export default function AssignmentResults() {
                             ? 'bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800' 
                             : 'bg-red-100 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800'
                         }`}>
-                          <p className="font-medium mb-2">Your Answer:</p>
+                           <p className="font-medium mb-2">Your Answer:</p>
                           <p className="text-gray-700 dark:text-gray-300">{answer?.answer || "No answer provided"}</p>
-                        </div>
+                         </div>
                         <div className="p-4 rounded-lg bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800">
-                          <p className="font-medium mb-2">Correct Answer:</p>
+                             <p className="font-medium mb-2">Correct Answer:</p>
                           <p className="text-gray-700 dark:text-gray-300">{question.correctAnswer}</p>
                         </div>
-                      </div>
-                    )}
+                           </div>
+                        )}
 
                     {question.type === 'code' && (
                       <>
@@ -367,8 +380,13 @@ export default function AssignmentResults() {
                           <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                             {(() => {
                               try {
-                                const parsedAnswer = JSON.parse(answer?.answer || '{}');
-                                return parsedAnswer.code || "No code provided";
+                                if (typeof answer?.answer === 'string') {
+                                  const parsedAnswer = JSON.parse(answer.answer);
+                                  return parsedAnswer.code || "No code provided";
+                                } else if (answer?.answer?.code) {
+                                  return answer.answer.code;
+                                }
+                                return "No code provided";
                               } catch (e) {
                                 return "No code provided";
                               }
@@ -385,8 +403,13 @@ export default function AssignmentResults() {
                             <pre className="whitespace-pre-wrap text-sm font-mono bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                               {(() => {
                                 try {
-                                  const parsedAnswer = JSON.parse(answer?.answer || '{}');
-                                  return parsedAnswer.output || "No output";
+                                  if (typeof answer?.answer === 'string') {
+                                    const parsedAnswer = JSON.parse(answer.answer);
+                                    return parsedAnswer.output || "No output";
+                                  } else if (answer?.answer?.output) {
+                                    return answer.answer.output;
+                                  }
+                                  return "No output";
                                 } catch (e) {
                                   return "No output";
                                 }
@@ -410,11 +433,11 @@ export default function AssignmentResults() {
                       </div>
                     )}
                   </div>
-                </CardContent>
-              </Card>
-            );
-          })}
-        </div>
+                  </CardContent>
+                </Card>
+              );
+            })}
+          </div>
       </div>
 
       <style>{`

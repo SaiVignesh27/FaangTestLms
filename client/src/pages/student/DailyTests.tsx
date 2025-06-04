@@ -125,28 +125,28 @@ export default function DailyTests() {
   return (
     <StudentLayout>
       <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg animate-fadeIn">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent animate-gradient">
             Daily Tests
           </h2>
-          <p className="text-gray-600 dark:text-gray-400">
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
             Practice and improve your skills with daily tests
           </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 items-start sm:items-center">
+        <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 items-start sm:items-center bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md animate-slideUp">
           <div className="relative w-full sm:w-96">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Search tests..."
-              className="pl-8"
+              className="pl-8 transition-all duration-300 hover:shadow-md focus:shadow-lg"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
 
           <Select value={courseFilter} onValueChange={setCourseFilter}>
-            <SelectTrigger className="w-full sm:w-60">
+            <SelectTrigger className="w-full sm:w-60 transition-all duration-300 hover:shadow-md">
               <SelectValue placeholder="Filter by course" />
             </SelectTrigger>
             <SelectContent>
@@ -161,9 +161,13 @@ export default function DailyTests() {
         </div>
 
         <Tabs defaultValue="pending" className="space-y-6">
-          <TabsList>
-            <TabsTrigger value="pending">Pending Tests</TabsTrigger>
-            <TabsTrigger value="completed">Completed Tests</TabsTrigger>
+          <TabsList className="bg-white dark:bg-gray-800 p-1 rounded-lg shadow-md">
+            <TabsTrigger value="pending" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white transition-all duration-300">
+              Pending Tests
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white transition-all duration-300">
+              Completed Tests
+            </TabsTrigger>
           </TabsList>
 
           <TabsContent value="pending" className="m-0">
@@ -173,8 +177,12 @@ export default function DailyTests() {
               </div>
             ) : pendingTests.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {pendingTests.map((test) => (
-                  <Card key={test._id} className="overflow-hidden">
+                {pendingTests.map((test, index) => (
+                  <Card 
+                    key={test._id} 
+                    className="overflow-hidden hover:shadow-lg transition-all duration-300 animate-fadeIn"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <Badge className="bg-primary-light bg-opacity-10 text-primary">
@@ -185,12 +193,14 @@ export default function DailyTests() {
                           <span>{test.timeLimit || 30} min</span>
                         </div>
                       </div>
-                      <CardTitle className="mt-2 text-lg">{test.title}</CardTitle>
+                      <CardTitle className="mt-2 text-lg bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                        {test.title}
+                      </CardTitle>
                       <CardDescription className="line-clamp-2">
                         {test.description || "Test your knowledge with this daily test."}
                       </CardDescription>
                     </CardHeader>
-
+                    
                     <CardContent>
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center">
@@ -200,34 +210,30 @@ export default function DailyTests() {
                           </span>
                         </div>
                         <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
+                          <Star className="h-4 w-4 mr-1 text-yellow-500" fill="currentColor" />
                           <span className="text-gray-500 dark:text-gray-400">
-                            {test.createdAt ? formatDate(new Date(test.createdAt)) : "Available now"}
+                            {test.points || 0} points
                           </span>
                         </div>
                       </div>
                     </CardContent>
-
+                    
                     <CardFooter className="border-t bg-gray-50 dark:bg-dark-border pt-4">
-                      <Button asChild size="sm">
-                        <a href={
-                          test.isCompleted
-                            ? `/student/tests/${test._id}/results`
-                            : `/student/tests/${test._id}`
-                        }>
-                          {test.isCompleted ? "View Results" : "Start Test"}
-                        </a>
+                      <Button asChild className="w-full transition-all duration-300 hover:scale-105 hover:shadow-md bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900">
+                        <Link href={`/student/tests/${test._id}`}>
+                          Start Test <ChevronRight className="h-4 w-4 ml-1" />
+                        </Link>
                       </Button>
                     </CardFooter>
                   </Card>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                <FileQuestion className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <h3 className="text-lg font-medium">No pending tests found</h3>
-                <p className="text-sm">
-                  All tests have been completed or none are available
+              <div className="text-center py-12 border rounded-xl bg-white dark:bg-gray-800 shadow-md animate-fadeIn">
+                <FileQuestion className="h-12 w-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                <h3 className="text-lg font-medium mb-1">No Tests Available</h3>
+                <p className="text-gray-500 dark:text-gray-400">
+                  You've completed all available tests!
                 </p>
               </div>
             )}
@@ -240,8 +246,12 @@ export default function DailyTests() {
               </div>
             ) : completedTests.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {completedTests.map((test) => (
-                  <Card key={test._id} className="overflow-hidden relative">
+                {completedTests.map((test, index) => (
+                  <Card 
+                    key={test._id} 
+                    className="overflow-hidden relative hover:shadow-lg transition-all duration-300 animate-fadeIn"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
                     <div className="absolute top-2 right-2">
                       <Badge className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300 flex items-center">
                         <CheckCircle className="h-3 w-3 mr-1" /> Completed
@@ -252,7 +262,9 @@ export default function DailyTests() {
                       <Badge className="bg-primary-light bg-opacity-10 text-primary">
                         {getCourseName(test.courseId)}
                       </Badge>
-                      <CardTitle className="mt-2 text-lg">{test.title}</CardTitle>
+                      <CardTitle className="mt-2 text-lg bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                        {test.title}
+                      </CardTitle>
                       <CardDescription className="line-clamp-2">
                         {test.description || "Test your knowledge with this daily test."}
                       </CardDescription>
@@ -271,7 +283,7 @@ export default function DailyTests() {
                         </div>
                         <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
                           <div
-                            className={`h-full rounded-full ${
+                            className={`h-full rounded-full transition-all duration-500 ${
                               (test.score || 0) >= 70
                                 ? "bg-green-500"
                                 : (test.score || 0) >= 40
@@ -295,31 +307,53 @@ export default function DailyTests() {
                     </CardContent>
 
                     <CardFooter className="border-t bg-gray-50 dark:bg-dark-border pt-4">
-                      <Button asChild size="sm">
-                        <a href={
-                          test.isCompleted
-                            ? `/student/tests/${test._id}/results`
-                            : `/student/tests/${test._id}`
-                        }>
-                          {test.isCompleted ? "View Results" : "Start Test"}
-                        </a>
+                      <Button asChild size="sm" className="w-full transition-all duration-300 hover:scale-105 hover:shadow-md">
+                        <Link href={`/student/tests/${test._id}/results`}>
+                          View Results
+                        </Link>
                       </Button>
                     </CardFooter>
                   </Card>
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                <CheckCircle className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <h3 className="text-lg font-medium">No completed tests found</h3>
-                <p className="text-sm">
-                  You haven't completed any tests yet.
+              <div className="text-center py-12 border rounded-xl bg-white dark:bg-gray-800 shadow-md animate-fadeIn">
+                <FileQuestion className="h-12 w-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                <h3 className="text-lg font-medium mb-1">No Completed Tests</h3>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Start taking tests to see your results here!
                 </p>
               </div>
             )}
           </TabsContent>
         </Tabs>
       </div>
+
+      <style>{`
+        @keyframes gradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-gradient {
+          background-size: 200% auto;
+          animation: gradient 3s ease infinite;
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out forwards;
+        }
+        .animate-slideUp {
+          animation: slideUp 0.5s ease-out forwards;
+        }
+      `}</style>
     </StudentLayout>
   );
 }

@@ -40,12 +40,26 @@ import {
   Star,
   Calendar,
   AlertTriangle,
-  XCircle
+  XCircle,
+  FileQuestion
 } from 'lucide-react';
 
 // Interface for assignment with result
 interface AssignmentWithResult extends Assignment {
-  result?: Result;
+  result?: {
+    _id: string;
+    score: number;
+    submittedAt: string;
+    answers: Array<{
+      questionId: string;
+      answer: string;
+      isCorrect: boolean;
+      points: number;
+      feedback: string;
+      correctAnswer: string;
+    }>;
+  };
+  points?: number;
   isCompleted: boolean;
   isOverdue: boolean;
   status: 'pending' | 'in-progress' | 'completed' | 'overdue';
@@ -194,33 +208,34 @@ export default function Assignments() {
   return (
     <StudentLayout>
       <div className="space-y-6">
-        <div>
-          <h2 className="text-2xl font-bold text-gray-800 dark:text-white">Assignments</h2>
-          <p className="text-gray-600 dark:text-gray-400">Manage and complete your assignments</p>
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg animate-fadeIn">
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent animate-gradient">
+            Assignments
+          </h2>
+          <p className="text-gray-600 dark:text-gray-400 mt-2">
+            Complete assignments to improve your skills and track your progress
+          </p>
         </div>
 
-        <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 items-start sm:items-center">
+        <div className="flex flex-col sm:flex-row space-y-4 sm:space-y-0 sm:space-x-4 items-start sm:items-center bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md animate-slideUp">
           <div className="relative w-full sm:w-96">
             <Search className="absolute left-2 top-2.5 h-4 w-4 text-gray-400" />
             <Input
               placeholder="Search assignments..."
-              className="pl-8"
+              className="pl-8 transition-all duration-300 hover:shadow-md focus:shadow-lg"
               value={searchQuery}
               onChange={(e) => setSearchQuery(e.target.value)}
             />
           </div>
-          
-          <Select
-            value={courseFilter}
-            onValueChange={setCourseFilter}
-          >
-            <SelectTrigger className="w-full sm:w-60">
+
+          <Select value={courseFilter} onValueChange={setCourseFilter}>
+            <SelectTrigger className="w-full sm:w-60 transition-all duration-300 hover:shadow-md">
               <SelectValue placeholder="Filter by course" />
             </SelectTrigger>
             <SelectContent>
               <SelectItem value="all">All Courses</SelectItem>
-              {courses.map((course) => (
-                <SelectItem key={course._id} value={course._id || ''}>
+              {courses?.filter(course => course._id).map((course) => (
+                <SelectItem key={course._id || ''} value={course._id || ''}>
                   {course.title}
                 </SelectItem>
               ))}
@@ -229,12 +244,15 @@ export default function Assignments() {
         </div>
 
         <Tabs defaultValue="pending" className="space-y-6">
-          <TabsList className="grid w-full grid-cols-3 md:w-[450px]">
-            <TabsTrigger value="pending">Pending</TabsTrigger>
-            <TabsTrigger value="completed">Completed</TabsTrigger>
-            <TabsTrigger value="overdue">Overdue</TabsTrigger>
+          <TabsList className="bg-white dark:bg-gray-800 p-1 rounded-lg shadow-md">
+            <TabsTrigger value="pending" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white transition-all duration-300">
+              Pending Assignments
+            </TabsTrigger>
+            <TabsTrigger value="completed" className="data-[state=active]:bg-blue-500 data-[state=active]:text-white transition-all duration-300">
+              Completed Assignments
+            </TabsTrigger>
           </TabsList>
-          
+
           <TabsContent value="pending" className="m-0">
             {isLoading ? (
               <div className="flex justify-center py-8">
@@ -242,8 +260,12 @@ export default function Assignments() {
               </div>
             ) : pendingAssignments.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {pendingAssignments.map((assignment) => (
-                  <Card key={assignment._id} className="overflow-hidden">
+                {pendingAssignments.map((assignment, index) => (
+                  <Card 
+                    key={assignment._id} 
+                    className="overflow-hidden hover:shadow-lg transition-all duration-300 animate-fadeIn"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
                     <CardHeader className="pb-2">
                       <div className="flex justify-between items-start">
                         <Badge className="bg-primary-light bg-opacity-10 text-primary">
@@ -251,54 +273,38 @@ export default function Assignments() {
                         </Badge>
                         <div className="flex items-center text-sm text-gray-500 dark:text-gray-400">
                           <Clock className="h-4 w-4 mr-1" />
-                          <span>
-                            {assignment.timeWindow?.endTime ? (
-                              <>
-                                {format(new Date(assignment.timeWindow.endTime), 'MMM dd, yyyy')}
-                              </>
-                            ) : assignment.dueDate ? (
-                              <>
-                                {format(new Date(assignment.dueDate), 'MMM dd, yyyy')}
-                              </>
-                            ) : 'No deadline'}
-                          </span>
+                          <span>{assignment.timeLimit || 30} min</span>
                         </div>
                       </div>
-                      <CardTitle className="mt-2 text-lg">{assignment.title}</CardTitle>
+                      <CardTitle className="mt-2 text-lg bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                        {assignment.title}
+                      </CardTitle>
                       <CardDescription className="line-clamp-2">
-                        {assignment.description || 'Complete this assignment to improve your skills.'}
+                        {assignment.description || "Complete this assignment to improve your skills."}
                       </CardDescription>
                     </CardHeader>
                     
                     <CardContent>
                       <div className="flex items-center justify-between text-sm">
                         <div className="flex items-center">
-                          <ClipboardList className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
+                          <FileQuestion className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
                           <span className="text-gray-500 dark:text-gray-400">
-                            {assignment.type || 'Coding Assignment'}
+                            {assignment.questions.length} questions
                           </span>
                         </div>
                         <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
-                          <span>
-                            {assignment.timeWindow?.endTime ? (
-                              <>
-                                {getDaysRemaining(new Date(assignment.timeWindow.endTime))}
-                              </>
-                            ) : assignment.dueDate ? (
-                              <>
-                                {getDaysRemaining(new Date(assignment.dueDate))}
-                              </>
-                            ) : 'No deadline'}
+                          <Star className="h-4 w-4 mr-1 text-yellow-500" fill="currentColor" />
+                          <span className="text-gray-500 dark:text-gray-400">
+                            {assignment.points || 0} points
                           </span>
                         </div>
                       </div>
                     </CardContent>
                     
                     <CardFooter className="border-t bg-gray-50 dark:bg-dark-border pt-4">
-                      <Button asChild className="w-full">
+                      <Button asChild className="w-full transition-all duration-300 hover:scale-105 hover:shadow-md bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900">
                         <Link href={`/student/assignments/${assignment._id}`}>
-                          {assignment.status === 'in-progress' ? 'Continue Working' : 'Start Assignment'} <ChevronRight className="h-4 w-4 ml-1" />
+                          Start Assignment <ChevronRight className="h-4 w-4 ml-1" />
                         </Link>
                       </Button>
                     </CardFooter>
@@ -306,14 +312,16 @@ export default function Assignments() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <h3 className="text-lg font-medium">No pending assignments found</h3>
-                <p className="text-sm">All assignments have been completed</p>
+              <div className="text-center py-12 border rounded-xl bg-white dark:bg-gray-800 shadow-md animate-fadeIn">
+                <FileQuestion className="h-12 w-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                <h3 className="text-lg font-medium mb-1">No Assignments Available</h3>
+                <p className="text-gray-500 dark:text-gray-400">
+                  You've completed all available assignments!
+                </p>
               </div>
             )}
           </TabsContent>
-          
+
           <TabsContent value="completed" className="m-0">
             {isLoading ? (
               <div className="flex justify-center py-8">
@@ -321,141 +329,70 @@ export default function Assignments() {
               </div>
             ) : completedAssignments.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {completedAssignments.map((assignment) => (
-                  <Card key={assignment._id} className="overflow-hidden relative">
+                {completedAssignments.map((assignment, index) => (
+                  <Card 
+                    key={assignment._id} 
+                    className="overflow-hidden relative hover:shadow-lg transition-all duration-300 animate-fadeIn"
+                    style={{ animationDelay: `${index * 100}ms` }}
+                  >
                     <div className="absolute top-2 right-2">
                       <Badge className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300 flex items-center">
                         <CheckCircle className="h-3 w-3 mr-1" /> Completed
                       </Badge>
                     </div>
-                    
+
                     <CardHeader className="pb-2">
                       <Badge className="bg-primary-light bg-opacity-10 text-primary">
                         {getCourseName(assignment.courseId)}
                       </Badge>
-                      <CardTitle className="mt-2 text-lg">{assignment.title}</CardTitle>
+                      <CardTitle className="mt-2 text-lg bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                        {assignment.title}
+                      </CardTitle>
                       <CardDescription className="line-clamp-2">
-                        {assignment.description || 'You have completed this assignment.'}
+                        {assignment.description || "Complete this assignment to improve your skills."}
                       </CardDescription>
                     </CardHeader>
-                    
+
                     <CardContent>
                       <div className="bg-gray-50 dark:bg-dark-border rounded-lg p-4 mb-4">
                         <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-gray-500 dark:text-gray-400">Your Score</span>
+                          <span className="text-sm text-gray-500 dark:text-gray-400">
+                            Your Score
+                          </span>
                           <div className="flex items-center">
                             <Star className="h-4 w-4 text-yellow-500 mr-1" fill="currentColor" />
                             <span className="font-semibold">{assignment.score}%</span>
                           </div>
                         </div>
                         <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                          <div 
-                            className={`h-full rounded-full ${
-                              (assignment.score || 0) >= 70 
-                                ? 'bg-green-500' 
-                                : (assignment.score || 0) >= 40 
-                                ? 'bg-yellow-500' 
-                                : 'bg-red-500'
+                          <div
+                            className={`h-full rounded-full transition-all duration-500 ${
+                              (assignment.score || 0) >= 70
+                                ? "bg-green-500"
+                                : (assignment.score || 0) >= 40
+                                ? "bg-yellow-500"
+                                : "bg-red-500"
                             }`}
-                            style={{ width: `${assignment.score || 0}%` }}
-                          ></div>
+                            style={{ width: `${assignment.score}%` }}
+                          />
                         </div>
                       </div>
-                      
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center">
-                          <ClipboardList className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
-                          <span className="text-gray-500 dark:text-gray-400">
-                            {assignment.type || 'Coding Assignment'}
-                          </span>
-                        </div>
-                        <div className="flex items-center">
-                          <Calendar className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
-                          <span className="text-gray-500 dark:text-gray-400">
-                            {assignment.result?.submittedAt 
-                              ? formatDate(new Date(assignment.result.submittedAt)) 
-                              : 'Completed'}
-                          </span>
-                        </div>
+
+                      <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
+                        <span>{assignment.questions.length} questions</span>
+                        <span>
+                          Completed on{" "}
+                          {assignment.result?.submittedAt
+                            ? formatDate(new Date(assignment.result.submittedAt))
+                            : "Unknown"}
+                        </span>
                       </div>
                     </CardContent>
-                    
+
                     <CardFooter className="border-t bg-gray-50 dark:bg-dark-border pt-4">
-                      <Button asChild size="sm">
-                        <Link href={assignment.isCompleted
-                            ? `/student/assignments/${assignment._id}/results`
-                            : `/student/assignments/${assignment._id}`}>
-                          View Submission
-                        </Link>
-                        
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
-              </div>
-            ) : (
-              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <h3 className="text-lg font-medium">No completed assignments found</h3>
-                <p className="text-sm">Complete some assignments to see them here</p>
-              </div>
-            )}
-          </TabsContent>
-          
-          <TabsContent value="overdue" className="m-0">
-            {isLoading ? (
-              <div className="flex justify-center py-8">
-                <Loader2 className="h-8 w-8 animate-spin text-primary" />
-              </div>
-            ) : overdueAssignments.length > 0 ? (
-              <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {overdueAssignments.map((assignment) => (
-                  <Card key={assignment._id} className="overflow-hidden border-l-4 border-l-destructive">
-                    <div className="absolute top-2 right-2">
-                      <Badge variant="destructive">
-                        <AlertTriangle className="h-3 w-3 mr-1" /> Overdue
-                      </Badge>
-                    </div>
-                    
-                    <CardHeader className="pb-2">
-                      <Badge className="bg-primary-light bg-opacity-10 text-primary">
-                        {getCourseName(assignment.courseId)}
-                      </Badge>
-                      <CardTitle className="mt-2 text-lg">{assignment.title}</CardTitle>
-                      <CardDescription className="line-clamp-2">
-                        {assignment.description || 'This assignment is past its due date.'}
-                      </CardDescription>
-                    </CardHeader>
-                    
-                    <CardContent>
-                      <div className="flex items-center justify-between text-sm">
-                        <div className="flex items-center">
-                          <ClipboardList className="h-4 w-4 mr-1 text-gray-500 dark:text-gray-400" />
-                          <span className="text-gray-500 dark:text-gray-400">
-                            {assignment.type || 'Coding Assignment'}
-                          </span>
-                        </div>
-                        <div className="flex items-center text-destructive font-medium">
-                          <Calendar className="h-4 w-4 mr-1" />
-                          <span>
-                            {assignment.timeWindow?.endTime ? (
-                              <>
-                                {getDaysRemaining(new Date(assignment.timeWindow.endTime))} 
-                              </>
-                            ) : assignment.dueDate ? (
-                              <>
-                                {getDaysRemaining(new Date(assignment.dueDate))} 
-                              </>
-                            ) : 'No deadline'}
-                          </span>
-                        </div>
-                      </div>
-                    </CardContent>
-                    
-                    <CardFooter className="border-t bg-gray-50 dark:bg-dark-border pt-4">
-                      <Button asChild variant="outline" className="w-full">
-                        <Link href={`/student/assignments/${assignment._id}`}>
-                          Submit Anyway
+                      <Button asChild size="sm" className="w-full transition-all duration-300 hover:scale-105 hover:shadow-md">
+                        <Link href={`/student/assignments/${assignment._id}/results`}>
+                          View Results
                         </Link>
                       </Button>
                     </CardFooter>
@@ -463,15 +400,43 @@ export default function Assignments() {
                 ))}
               </div>
             ) : (
-              <div className="text-center py-12 text-gray-500 dark:text-gray-400">
-                <ClipboardList className="h-12 w-12 mx-auto mb-4 opacity-20" />
-                <h3 className="text-lg font-medium">No overdue assignments</h3>
-                <p className="text-sm">Great job keeping up with your work!</p>
+              <div className="text-center py-12 border rounded-xl bg-white dark:bg-gray-800 shadow-md animate-fadeIn">
+                <FileQuestion className="h-12 w-12 mx-auto mb-4 text-gray-300 dark:text-gray-600" />
+                <h3 className="text-lg font-medium mb-1">No Completed Assignments</h3>
+                <p className="text-gray-500 dark:text-gray-400">
+                  Start completing assignments to see your results here!
+                </p>
               </div>
             )}
           </TabsContent>
         </Tabs>
       </div>
+
+      <style>{`
+        @keyframes gradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-gradient {
+          background-size: 200% auto;
+          animation: gradient 3s ease infinite;
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out forwards;
+        }
+        .animate-slideUp {
+          animation: slideUp 0.5s ease-out forwards;
+        }
+      `}</style>
     </StudentLayout>
   );
 }

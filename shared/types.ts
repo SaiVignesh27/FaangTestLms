@@ -61,6 +61,7 @@ export interface LeaderboardEntry {
   testId?: string;
   assignmentId?: string;
   completedAt: Date;
+  timeSpent?: number;
 }
 
 // Student Assignment types

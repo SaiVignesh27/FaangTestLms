@@ -72,7 +72,7 @@ export default function CourseDetail() {
   }, [id, user, course]);
 
   // Fetch course classes
-  const { data: classes, isLoading: isLoadingClasses } = useQuery<ClassWithViewStatus[]>({
+  const { data: classes, isLoading: isLoadingClasses } = useQuery<Class[]>({
     queryKey: [`/api/student/classes?courseId=${id}`],
   });
 
@@ -82,9 +82,7 @@ export default function CourseDetail() {
   });
 
   // Fetch course assignments
-  const { data: assignments, isLoading: isLoadingAssignments } = useQuery<
-    any[]
-  >({
+  const { data: assignments, isLoading: isLoadingAssignments } = useQuery<any[]>({
     queryKey: [`/api/student/assignments?courseId=${id}`],
   });
 
@@ -97,18 +95,6 @@ export default function CourseDetail() {
   const { data: classResults } = useQuery<any[]>({
     queryKey: [`/api/student/results/classes`],
   });
-
-  // Update classes with completion status
-  const classesWithStatus = React.useMemo(() => {
-    if (!classes || !classResults) return [];
-    return classes.map((classItem) => {
-      const result = classResults.find((r) => r.classId === classItem._id);
-      return {
-        ...classItem,
-        completed: !!result
-      };
-    });
-  }, [classes, classResults]);
 
   // Merge tests with results
   const testsWithResults = React.useMemo(() => {
@@ -124,12 +110,25 @@ export default function CourseDetail() {
     });
   }, [tests, testResults]);
 
-  const isLoading =
-    isLoadingCourse ||
-    isLoadingClasses ||
-    isLoadingTests ||
-    isLoadingAssignments ||
-    isLoadingTestResults;
+  const isLoading = isLoadingCourse || isLoadingClasses || isLoadingTests || 
+                   isLoadingAssignments || isLoadingTestResults;
+
+  // Calculate progress
+  const calculateProgress = React.useCallback(() => {
+    if (!classes || !testsWithResults || !assignments) return 0;
+
+    const totalItems = classes.length + testsWithResults.length + assignments.length;
+    if (totalItems === 0) return 0;
+
+    const completedClasses = classes.length; // All classes are considered completed
+    const completedTests = testsWithResults.filter(t => t.isCompleted).length;
+    const completedAssignments = assignments.filter(a => a.status === 'completed').length;
+
+    const completedItems = completedClasses + completedTests + completedAssignments;
+    return Math.round((completedItems / totalItems) * 100);
+  }, [classes, testsWithResults, assignments]);
+
+  const progress = calculateProgress();
 
   // Get status badge color
   const getStatusColor = (status: string) => {
@@ -186,23 +185,6 @@ export default function CourseDetail() {
         return null;
     }
   };
-
-  // Calculate progress
-  const calculateProgress = React.useCallback(() => {
-    if (!classes || !testsWithResults || !assignments) return 0;
-
-    const totalItems = classes.length + testsWithResults.length + assignments.length;
-    if (totalItems === 0) return 0;
-
-    const completedClasses = classes.filter(c => c.viewed).length;
-    const completedTests = testsWithResults.filter(t => t.isCompleted).length;
-    const completedAssignments = assignments.filter(a => a.status === 'completed').length;
-
-    const completedItems = completedClasses + completedTests + completedAssignments;
-    return Math.round((completedItems / totalItems) * 100);
-  }, [classes, testsWithResults, assignments]);
-
-  const progress = calculateProgress();
 
   if (isLoading) {
     return (
@@ -387,7 +369,7 @@ export default function CourseDetail() {
                         <span>Classes</span>
                       </div>
                       <div className="flex items-center gap-2">
-                        <Badge variant="outline">{classes?.filter(c => c.viewed)?.length || 0}/{classes?.length || 0} completed</Badge>
+                        <Badge variant="outline">{classes?.length || 0}/{classes?.length || 0} completed</Badge>
                       </div>
                     </div>
 
@@ -440,7 +422,7 @@ export default function CourseDetail() {
               </div>
             ) : classes && classes.length > 0 ? (
               <div className="space-y-4">
-                {classes.map((classItem, index) => (
+                {classes.map((classItem) => (
                   <Card key={classItem._id} className="overflow-hidden">
                     <div className="p-6 flex flex-col md:flex-row md:items-center md:justify-between gap-4">
                       <div className="flex items-start md:items-center gap-4">

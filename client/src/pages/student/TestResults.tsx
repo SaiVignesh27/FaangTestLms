@@ -100,27 +100,32 @@ export default function TestResults() {
 
   return (
     <StudentLayout>
-      <div className="space-y-6">
-        <div>
-          <Button variant="outline" asChild className="mb-4">
+      <div className="space-y-8">
+        <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg animate-fadeIn">
+          <Button variant="outline" asChild className="mb-4 hover:scale-105 transition-transform">
             <Link href={backPath}>
               <ArrowLeft className="h-4 w-4 mr-2" />
               Back to {courseId ? "Course" : "Tests"}
             </Link>
           </Button>
-          <h2 className="text-2xl font-bold">{test?.title || "Results"}</h2>
+          <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent animate-gradient">
+            {test?.title || "Results"}
+          </h2>
         </div>
 
         <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Score</CardTitle>
+          <Card className="hover:shadow-lg transition-all duration-300 animate-slideUp">
+            <CardHeader className="bg-gradient-to-r from-blue-50 to-white dark:from-gray-800 dark:to-gray-900">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Star className="h-5 w-5 text-yellow-500" fill="currentColor" />
+                Score
+              </CardTitle>
               <CardDescription>Your overall performance</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="flex items-center justify-between mb-4">
                 <div className="space-y-1">
-                  <Badge className={`text-lg px-3 py-1 ${getScoreBadgeColor(scorePercentage)}`}>
+                  <Badge className={`text-lg px-3 py-1 ${getScoreBadgeColor(scorePercentage)} animate-bounce`}>
                     {scorePercentage}%
                   </Badge>
                   <p className="text-sm text-muted-foreground">{getScoreMessage(scorePercentage)}</p>
@@ -130,18 +135,21 @@ export default function TestResults() {
                   <span className="font-semibold">{result.maxScore} points</span>
                 </div>
               </div>
-              <Progress value={scorePercentage} className="h-2" />
+              <Progress value={scorePercentage} className="h-2 bg-blue-100 dark:bg-blue-900" />
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Question Analysis</CardTitle>
+          <Card className="hover:shadow-lg transition-all duration-300 animate-slideUp" style={{ animationDelay: '100ms' }}>
+            <CardHeader className="bg-gradient-to-r from-green-50 to-white dark:from-gray-800 dark:to-gray-900">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <CheckCircle className="h-5 w-5 text-green-500" />
+                Question Analysis
+              </CardTitle>
               <CardDescription>Breakdown of your answers</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-green-50 dark:bg-green-900/20">
                   <div className="flex items-center">
                     <CheckCircle className="h-5 w-5 text-green-500 mr-2" />
                     <span>Correct Answers</span>
@@ -153,7 +161,7 @@ export default function TestResults() {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-red-50 dark:bg-red-900/20">
                   <div className="flex items-center">
                     <XCircle className="h-5 w-5 text-red-500 mr-2" />
                     <span>Incorrect Answers</span>
@@ -165,10 +173,10 @@ export default function TestResults() {
                     </span>
                   </div>
                 </div>
-                <Separator />
-                <div className="flex items-center justify-between">
+                <Separator className="my-4" />
+                <div className="flex items-center justify-between p-3 rounded-lg bg-blue-50 dark:bg-blue-900/20">
                   <div className="flex items-center">
-                    <FileQuestion className="h-5 w-5 text-primary mr-2" />
+                    <FileQuestion className="h-5 w-5 text-blue-500 mr-2" />
                     <span>Total Questions</span>
                   </div>
                   <span className="font-semibold">{totalQuestions}</span>
@@ -177,16 +185,19 @@ export default function TestResults() {
             </CardContent>
           </Card>
 
-          <Card>
-            <CardHeader>
-              <CardTitle className="text-lg">Test Details</CardTitle>
+          <Card className="hover:shadow-lg transition-all duration-300 animate-slideUp" style={{ animationDelay: '200ms' }}>
+            <CardHeader className="bg-gradient-to-r from-purple-50 to-white dark:from-gray-800 dark:to-gray-900">
+              <CardTitle className="text-lg flex items-center gap-2">
+                <Clock className="h-5 w-5 text-purple-500" />
+                Test Details
+              </CardTitle>
               <CardDescription>Additional information</CardDescription>
             </CardHeader>
             <CardContent>
               <div className="space-y-4">
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20">
                   <div className="flex items-center">
-                    <Clock className="h-5 w-5 text-primary mr-2" />
+                    <Clock className="h-5 w-5 text-purple-500 mr-2" />
                     <span>Time Spent</span>
                   </div>
                   <div className="text-right">
@@ -195,9 +206,9 @@ export default function TestResults() {
                     </span>
                   </div>
                 </div>
-                <div className="flex items-center justify-between">
+                <div className="flex items-center justify-between p-3 rounded-lg bg-purple-50 dark:bg-purple-900/20">
                   <div className="flex items-center">
-                    <Award className="h-5 w-5 text-primary mr-2" />
+                    <Award className="h-5 w-5 text-purple-500 mr-2" />
                     <span>Submission Date</span>
                   </div>
                   <div className="text-right">
@@ -215,19 +226,22 @@ export default function TestResults() {
         </div>
 
         <div className="space-y-6">
-          <div className="flex items-center justify-between">
-            <h3 className="text-xl font-semibold">Question Review</h3>
-            <div className="flex items-center gap-2">
-              <Badge variant="outline" className="flex items-center gap-1">
+          <div className="flex items-center justify-between bg-white dark:bg-gray-800 p-4 rounded-xl shadow-md">
+            <h3 className="text-2xl font-semibold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+              Question Review
+            </h3>
+            <div className="flex items-center gap-3">
+              <Badge variant="outline" className="flex items-center gap-1 px-3 py-1 border-green-200 dark:border-green-800">
                 <CheckCircle className="h-3 w-3 text-green-500" />
                 Correct
               </Badge>
-              <Badge variant="outline" className="flex items-center gap-1">
+              <Badge variant="outline" className="flex items-center gap-1 px-3 py-1 border-red-200 dark:border-red-800">
                 <XCircle className="h-3 w-3 text-red-500" />
                 Incorrect
               </Badge>
             </div>
           </div>
+
           {test?.questions?.map((question: any, index: number) => {
             const answer = Array.isArray(result.answers)
               ? result.answers.find(
@@ -237,40 +251,76 @@ export default function TestResults() {
             const isCorrect = answer?.isCorrect;
 
             return (
-              <Card key={index} className={`border ${isCorrect ? 'border-green-200 dark:border-green-800' : 'border-red-200 dark:border-red-800'}`}>
-                <CardHeader>
+              <Card 
+                key={index} 
+                className={`border transition-all duration-300 hover:shadow-lg animate-fadeIn ${
+                  isCorrect 
+                    ? 'border-green-200 dark:border-green-800 hover:border-green-300 dark:hover:border-green-700' 
+                    : 'border-red-200 dark:border-red-800 hover:border-red-300 dark:hover:border-red-700'
+                }`}
+                style={{ animationDelay: `${index * 100}ms` }}
+              >
+                <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">
+                    <CardTitle className="text-lg flex items-center gap-2">
+                      <span className="w-8 h-8 flex items-center justify-center bg-blue-100 dark:bg-blue-900 text-blue-700 dark:text-blue-300 rounded-full text-sm">
+                        {index + 1}
+                      </span>
                       Question {index + 1}
                     </CardTitle>
-                    <Badge className={isCorrect ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"}>
+                    <Badge className={`px-3 py-1 ${
+                      isCorrect 
+                        ? "bg-green-100 text-green-800 dark:bg-green-900 dark:text-green-300" 
+                        : "bg-red-100 text-red-800 dark:bg-red-900 dark:text-red-300"
+                    }`}>
                       {isCorrect ? "Correct" : "Incorrect"}
                     </Badge>
                   </div>
                 </CardHeader>
-                <CardContent>
-                  <p className="mb-4">{question.text}</p>
-                  <div className="space-y-4">
+                <CardContent className="pt-6">
+                  <div className="mb-6">
+                    <pre className="whitespace-pre-wrap text-base font-sans text-gray-700 dark:text-gray-300 bg-transparent p-0">
+                      {question.text}
+                    </pre>
+                  </div>
+                  <div className="space-y-6">
                     {question.type === 'mcq' && (
-                      <div>
-                        <p className="font-medium mb-2">Options:</p>
-                        <ul className="list-disc pl-5">
+                      <div className="space-y-3">
+                        <p className="font-medium text-gray-700 dark:text-gray-300">Options:</p>
+                        <ul className="space-y-2">
                           {question.options?.map((option: string, optIndex: number) => (
                             <li 
                               key={optIndex} 
-                              className={
-                                option === answer?.answer ? 
-                                (isCorrect ? 'text-green-600 dark:text-green-400' : 'text-red-600 dark:text-red-400 font-semibold') : 
-                                (question.correctAnswer === option ? 'text-green-600 dark:text-green-400 font-semibold' : '')
-                              }
+                              className={`p-3 rounded-lg transition-all duration-300 ${
+                                option === answer?.answer 
+                                  ? (isCorrect 
+                                      ? 'bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800' 
+                                      : 'bg-red-100 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800')
+                                  : (question.correctAnswer === option && !isCorrect
+                                      ? 'bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800'
+                                      : 'bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700')
+                              }`}
                             >
-                              {option}
-                              {option === answer?.answer && (
-                                isCorrect ? ' (Your Answer - Correct)' : ' (Your Answer)'
-                              )}
-                              {question.correctAnswer === option && !isCorrect && (
-                                ' (Correct Answer)'
-                              )}
+                              <div className="flex items-center justify-between">
+                                <span className={`
+                                  ${option === answer?.answer 
+                                    ? (isCorrect ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300')
+                                    : (question.correctAnswer === option && !isCorrect ? 'text-green-700 dark:text-green-300' : '')
+                                  }
+                                `}>
+                                  {option}
+                                </span>
+                                <div className="flex items-center gap-2">
+                                  {option === answer?.answer && (
+                                    <span className={`text-sm ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
+                                      {isCorrect ? '✓ Your Answer' : '✗ Your Answer'}
+                                    </span>
+                                  )}
+                                  {question.correctAnswer === option && !isCorrect && (
+                                    <span className="text-sm text-green-600">✓ Correct Answer</span>
+                                  )}
+                                </div>
+                              </div>
                             </li>
                           ))}
                         </ul>
@@ -279,22 +329,26 @@ export default function TestResults() {
 
                     {question.type === 'fill' && (
                       <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                        <div className={`p-4 rounded-lg ${isCorrect ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'}`}>
+                        <div className={`p-4 rounded-lg transition-all duration-300 ${
+                          isCorrect 
+                            ? 'bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800' 
+                            : 'bg-red-100 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800'
+                        }`}>
                           <p className="font-medium mb-2">Your Answer:</p>
-                          <p>{answer?.answer || "No answer provided"}</p>
+                          <p className="text-gray-700 dark:text-gray-300">{answer?.answer || "No answer provided"}</p>
                         </div>
-                        <div className="p-4 bg-green-100 dark:bg-green-900 rounded-lg">
+                        <div className="p-4 rounded-lg bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800">
                           <p className="font-medium mb-2">Correct Answer:</p>
-                          <p>{question.correctAnswer}</p>
+                          <p className="text-gray-700 dark:text-gray-300">{question.correctAnswer}</p>
                         </div>
                       </div>
                     )}
 
                     {question.type === 'code' && (
                       <>
-                        <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg mb-4">
-                          <p className="font-medium mb-2">Your Code:</p>
-                          <pre className="whitespace-pre-wrap text-sm font-mono">
+                        <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg mb-4 border border-gray-200 dark:border-gray-700">
+                          <p className="font-medium mb-2 text-gray-700 dark:text-gray-300">Your Code:</p>
+                          <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                             {(() => {
                               try {
                                 const parsedAnswer = JSON.parse(answer?.answer || '{}');
@@ -306,9 +360,13 @@ export default function TestResults() {
                           </pre>
                         </div>
                         <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className={`p-4 rounded-lg ${isCorrect ? 'bg-green-100 dark:bg-green-900' : 'bg-red-100 dark:bg-red-900'}`}>
+                          <div className={`p-4 rounded-lg transition-all duration-300 ${
+                            isCorrect 
+                              ? 'bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800' 
+                              : 'bg-red-100 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800'
+                          }`}>
                             <p className="font-medium mb-2">Your Output:</p>
-                            <pre className="whitespace-pre-wrap text-sm font-mono">
+                            <pre className="whitespace-pre-wrap text-sm font-mono bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
                               {(() => {
                                 try {
                                   const parsedAnswer = JSON.parse(answer?.answer || '{}');
@@ -319,18 +377,20 @@ export default function TestResults() {
                               })()}
                             </pre>
                           </div>
-                          <div className="p-4 bg-green-100 dark:bg-green-900 rounded-lg">
+                          <div className="p-4 rounded-lg bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800">
                             <p className="font-medium mb-2">Expected Output:</p>
-                            <pre className="whitespace-pre-wrap text-sm font-mono">{question.correctAnswer}</pre>
+                            <pre className="whitespace-pre-wrap text-sm font-mono bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                              {question.correctAnswer}
+                            </pre>
                           </div>
                         </div>
                       </>
                     )}
 
                     {answer?.feedback && (
-                      <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg">
-                        <p className="font-medium mb-2">Feedback:</p>
-                        <p>{answer.feedback}</p>
+                      <div className="p-4 bg-blue-50 dark:bg-blue-900/20 rounded-lg border-2 border-blue-200 dark:border-blue-800">
+                        <p className="font-medium mb-2 text-blue-700 dark:text-blue-300">Feedback:</p>
+                        <p className="text-gray-700 dark:text-gray-300">{answer.feedback}</p>
                       </div>
                     )}
                   </div>
@@ -340,6 +400,32 @@ export default function TestResults() {
           })}
         </div>
       </div>
+
+      <style>{`
+        @keyframes gradient {
+          0% { background-position: 0% 50%; }
+          50% { background-position: 100% 50%; }
+          100% { background-position: 0% 50%; }
+        }
+        @keyframes fadeIn {
+          from { opacity: 0; transform: translateY(10px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        @keyframes slideUp {
+          from { opacity: 0; transform: translateY(20px); }
+          to { opacity: 1; transform: translateY(0); }
+        }
+        .animate-gradient {
+          background-size: 200% auto;
+          animation: gradient 3s ease infinite;
+        }
+        .animate-fadeIn {
+          animation: fadeIn 0.5s ease-out forwards;
+        }
+        .animate-slideUp {
+          animation: slideUp 0.5s ease-out forwards;
+        }
+      `}</style>
     </StudentLayout>
   );
 } 

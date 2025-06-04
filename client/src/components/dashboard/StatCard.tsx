@@ -13,9 +13,10 @@ interface StatCardProps {
     isPositive: boolean;
     text: string;
   };
+  valueColor?: string;
 }
 
-export default function StatCard({ title, value, icon: Icon, iconColor, iconBgColor, trend }: StatCardProps) {
+export default function StatCard({ title, value, icon: Icon, iconColor, iconBgColor, trend, valueColor }: StatCardProps) {
   return (
     <div className="bg-white dark:bg-dark-surface p-4 rounded-lg shadow-sm border border-light-border dark:border-dark-border">
       <div className="flex items-center">
@@ -24,7 +25,7 @@ export default function StatCard({ title, value, icon: Icon, iconColor, iconBgCo
         </div>
         <div className="ml-4">
           <p className="text-sm font-medium text-gray-500 dark:text-gray-400">{title}</p>
-          <p className="text-2xl font-bold text-gray-800 dark:text-white">{value}</p>
+          <p className={cn("text-2xl font-bold text-gray-800 dark:text-white", valueColor)}>{value}</p>
         </div>
       </div>
       
