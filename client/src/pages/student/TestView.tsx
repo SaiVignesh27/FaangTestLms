@@ -28,10 +28,10 @@ export default function TestView() {
   const { data: resultData } = useQuery<{ result: Result }>({ queryKey: [`/api/student/tests/${id}/results`], retry: false });
 
   // Handler for updating answers from CodeEditor
-  const handleCodeAnswerChange = (questionIdentifier: string, answer: { code?: string; output?: string }) => {
+  const handleCodeAnswerChange = (questionIdentifier: string, answer: { code?: string; output?: string; testResults?: any[]; score?: number }) => {
     setAnswers((prev: Record<string, string>) => {
       const existingAnswer = prev[questionIdentifier];
-      let parsedExisting: { code?: string; output?: string } = {};
+      let parsedExisting: { code?: string; output?: string; testResults?: any[]; score?: number } = {};
       try {
         if (existingAnswer) {
           parsedExisting = JSON.parse(existingAnswer);
@@ -39,11 +39,15 @@ export default function TestView() {
       } catch (e) {
         console.error('Failed to parse existing answer for', questionIdentifier, e);
       }
-      // Merge existing answer parts with new changes (code or output)
+      // Merge existing answer parts with new changes
       const updatedAnswer = { ...parsedExisting, ...answer };
-      // Store the updated answer object as a JSON string
+      // Add testCasesPassed, testCasesTotal, points if testResults present
+      if (updatedAnswer.testResults) {
+        (updatedAnswer as any).testCasesPassed = updatedAnswer.testResults.filter((t: any) => t.passed).length;
+        (updatedAnswer as any).testCasesTotal = updatedAnswer.testResults.length;
+        (updatedAnswer as any).points = updatedAnswer.score ?? ((updatedAnswer as any).testCasesTotal > 0 ? ((updatedAnswer as any).testCasesPassed / (updatedAnswer as any).testCasesTotal) : 0);
+      }
       const updatedAnswers = { ...prev, [questionIdentifier]: JSON.stringify(updatedAnswer) };
-      // Update localStorage immediately
       localStorage.setItem(`answers-${id}`, JSON.stringify(updatedAnswers));
       return updatedAnswers;
     });
@@ -102,22 +106,50 @@ export default function TestView() {
           feedback = isCorrect ? 'Correct' : `Incorrect. Correct answer: ${correctAnswer}`;
         } else if (question.type === 'code') {
           try {
-            // For code questions, the answer is stored as a JSON string { code: '...', output: '...' }
+            // For code questions, the answer is stored as a JSON string with code, output, testResults, etc.
             const parsedAnswer = typeof studentAnswer === 'string' ? JSON.parse(studentAnswer) : {};
+            // If testResults are present, use them for scoring
+            if (parsedAnswer && Array.isArray(parsedAnswer.testResults)) {
+              const testResults = parsedAnswer.testResults;
+              const testCasesPassed = parsedAnswer.testCasesPassed ?? testResults.filter((t: any) => t.passed).length;
+              const testCasesTotal = parsedAnswer.testCasesTotal ?? testResults.length;
+              const points = parsedAnswer.points ?? (testCasesTotal > 0 ? (testCasesPassed / testCasesTotal) * (question.points || 1) : 0);
+              const isCorrect = testCasesPassed === testCasesTotal && testCasesTotal > 0;
+              feedback = `Passed ${testCasesPassed} of ${testCasesTotal} test cases`;
+              return {
+                questionId: question._id || index.toString(),
+                answer: JSON.stringify({ ...parsedAnswer, testCasesPassed, testCasesTotal, points }),
+                isCorrect,
+                points,
+                feedback,
+                correctAnswer: question.correctAnswer
+              };
+            }
+            // Fallback: old logic if testResults missing
             const output = parsedAnswer.output || '';
             const code = parsedAnswer.code || '';
-            processedAnswer = JSON.stringify({ code, output });
-
-            // Clean both the output and correctAnswer before comparison
             const outputStr = typeof output === 'string' ? output.trim() : '';
             const correctAnswerStr = typeof correctAnswer === 'string' ? correctAnswer.trim() : '';
-            
-            // Compare the cleaned strings
-            isCorrect = outputStr === correctAnswerStr;
+            const isCorrect = outputStr === correctAnswerStr;
             feedback = isCorrect ? 'Correct output' : `Incorrect output. Expected: ${correctAnswer}`;
+            return {
+              questionId: question._id || index.toString(),
+              answer: JSON.stringify({ code, output }),
+              isCorrect,
+              points: isCorrect ? (question.points || 1) : 0,
+              feedback,
+              correctAnswer: question.correctAnswer
+            };
           } catch {
-            isCorrect = false;
             feedback = 'Invalid code answer format';
+            return {
+              questionId: question._id || index.toString(),
+              answer: studentAnswer,
+              isCorrect: false,
+              points: 0,
+              feedback,
+              correctAnswer: question.correctAnswer
+            };
           }
         }
 

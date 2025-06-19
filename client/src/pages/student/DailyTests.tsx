@@ -246,75 +246,94 @@ export default function DailyTests() {
               </div>
             ) : completedTests.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {completedTests.map((test, index) => (
-                  <Card 
-                    key={test._id} 
-                    className="overflow-hidden relative hover:shadow-lg transition-all duration-300 animate-fadeIn"
-                    style={{ animationDelay: `${index * 100}ms` }}
-                  >
-                    <div className="absolute top-2 right-2">
-                      <Badge className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300 flex items-center">
-                        <CheckCircle className="h-3 w-3 mr-1" /> Completed
-                      </Badge>
-                    </div>
+                {completedTests.map((test, index) => {
+                  // Calculate weighted score percentage for display
+                  let totalScore = 0;
+                  let maxScore = 0;
+                  if (test.questions && test.result && Array.isArray(test.result.answers)) {
+                    maxScore = test.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+                    totalScore = test.questions.reduce((sum, q, idx) => {
+                      const answer = test.result.answers.find((a) => a.questionId === (q._id || idx.toString()));
+                      return sum + (answer && answer.isCorrect ? (q.points || 0) : 0);
+                    }, 0);
+                  }
+                  let scorePercentage = 0;
+                  if (maxScore > 0) {
+                    scorePercentage = Math.round((totalScore / maxScore) * 100);
+                    if (scorePercentage > 100) scorePercentage = 100;
+                    if (scorePercentage < 0) scorePercentage = 0;
+                  }
 
-                    <CardHeader className="pb-2">
-                      <Badge className="bg-primary-light bg-opacity-10 text-primary">
-                        {getCourseName(test.courseId)}
-                      </Badge>
-                      <CardTitle className="mt-2 text-lg bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-                        {test.title}
-                      </CardTitle>
-                      <CardDescription className="line-clamp-2">
-                        {test.description || "Test your knowledge with this daily test."}
-                      </CardDescription>
-                    </CardHeader>
+                  return (
+                    <Card 
+                      key={test._id} 
+                      className="overflow-hidden relative hover:shadow-lg transition-all duration-300 animate-fadeIn"
+                      style={{ animationDelay: `${index * 100}ms` }}
+                    >
+                      <div className="absolute top-2 right-2">
+                        <Badge className="bg-green-100 dark:bg-green-900 text-green-800 dark:text-green-300 flex items-center">
+                          <CheckCircle className="h-3 w-3 mr-1" /> Completed
+                        </Badge>
+                      </div>
 
-                    <CardContent>
-                      <div className="bg-gray-50 dark:bg-dark-border rounded-lg p-4 mb-4">
-                        <div className="flex justify-between items-center mb-2">
-                          <span className="text-sm text-gray-500 dark:text-gray-400">
-                            Your Score
-                          </span>
-                          <div className="flex items-center">
-                            <Star className="h-4 w-4 text-yellow-500 mr-1" fill="currentColor" />
-                            <span className="font-semibold">{test.score}%</span>
+                      <CardHeader className="pb-2">
+                        <Badge className="bg-primary-light bg-opacity-10 text-primary">
+                          {getCourseName(test.courseId)}
+                        </Badge>
+                        <CardTitle className="mt-2 text-lg bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
+                          {test.title}
+                        </CardTitle>
+                        <CardDescription className="line-clamp-2">
+                          {test.description || "Test your knowledge with this daily test."}
+                        </CardDescription>
+                      </CardHeader>
+
+                      <CardContent>
+                        <div className="bg-gray-50 dark:bg-dark-border rounded-lg p-4 mb-4">
+                          <div className="flex justify-between items-center mb-2">
+                            <span className="text-sm text-gray-500 dark:text-gray-400">
+                              Your Score
+                            </span>
+                            <div className="flex items-center">
+                              <Star className="h-4 w-4 text-yellow-500 mr-1" fill="currentColor" />
+                              <span className="font-semibold">{scorePercentage}%</span>
+                            </div>
+                          </div>
+                          <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
+                            <div
+                              className={`h-full rounded-full transition-all duration-500 ${
+                                (scorePercentage >= 70)
+                                  ? "bg-green-500"
+                                  : (scorePercentage >= 40)
+                                  ? "bg-yellow-500"
+                                  : "bg-red-500"
+                              }`}
+                              style={{ width: `${scorePercentage}%` }}
+                            />
                           </div>
                         </div>
-                        <div className="h-2 bg-gray-200 dark:bg-gray-700 rounded-full overflow-hidden">
-                          <div
-                            className={`h-full rounded-full transition-all duration-500 ${
-                              (test.score || 0) >= 70
-                                ? "bg-green-500"
-                                : (test.score || 0) >= 40
-                                ? "bg-yellow-500"
-                                : "bg-red-500"
-                            }`}
-                            style={{ width: `${test.score}%` }}
-                          />
+
+                        <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
+                          <span>{test.questions.length} questions</span>
+                          <span>
+                            Completed on{" "}
+                            {test.result?.submittedAt
+                              ? formatDate(new Date(test.result.submittedAt))
+                              : "Unknown"}
+                          </span>
                         </div>
-                      </div>
+                      </CardContent>
 
-                      <div className="flex justify-between text-sm text-gray-500 dark:text-gray-400">
-                        <span>{test.questions.length} questions</span>
-                        <span>
-                          Completed on{" "}
-                          {test.result?.submittedAt
-                            ? formatDate(new Date(test.result.submittedAt))
-                            : "Unknown"}
-                        </span>
-                      </div>
-                    </CardContent>
-
-                    <CardFooter className="border-t bg-gray-50 dark:bg-dark-border pt-4">
-                      <Button asChild size="sm" className="w-full transition-all duration-300 hover:scale-105 hover:shadow-md">
-                        <Link href={`/student/tests/${test._id}/results`}>
-                          View Results
-                        </Link>
-                      </Button>
-                    </CardFooter>
-                  </Card>
-                ))}
+                      <CardFooter className="border-t bg-gray-50 dark:bg-dark-border pt-4">
+                        <Button asChild size="sm" className="w-full transition-all duration-300 hover:scale-105 hover:shadow-md">
+                          <Link href={`/student/tests/${test._id}/results`}>
+                            View Results
+                          </Link>
+                        </Button>
+                      </CardFooter>
+                    </Card>
+                  );
+                })}
               </div>
             ) : (
               <div className="text-center py-12 border rounded-xl bg-white dark:bg-gray-800 shadow-md animate-fadeIn">

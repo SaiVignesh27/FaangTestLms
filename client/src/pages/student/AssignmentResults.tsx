@@ -80,7 +80,23 @@ export default function AssignmentResults() {
   const totalQuestions = assignment?.questions?.length || 0;
   const correctAnswers = result.answers?.filter((a: Answer) => a.isCorrect).length || 0;
   const incorrectAnswers = totalQuestions - correctAnswers;
-  const scorePercentage = Math.round((result.score / result.maxScore) * 100) || 0;
+  // Calculate score and maxScore on the frontend for clarity
+  const answersArr = Array.isArray(result.answers) ? result.answers : [];
+  let totalScore = 0;
+  let maxScore = 0;
+  if (assignment?.questions) {
+    maxScore = assignment.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+    totalScore = assignment.questions.reduce((sum, q, idx) => {
+      const answer = answersArr.find((a) => a.questionId === (q._id || idx.toString()));
+      return sum + (answer && answer.isCorrect ? (q.points || 0) : 0);
+    }, 0);
+  }
+  let scorePercentage = 0;
+  if (maxScore > 0) {
+    scorePercentage = Math.round((totalScore / maxScore) * 100);
+    if (scorePercentage > 100) scorePercentage = 100;
+    if (scorePercentage < 0) scorePercentage = 0;
+  }
   
   // Format time spent
   const formatTimeSpent = (seconds: number | undefined) => {
@@ -156,12 +172,12 @@ export default function AssignmentResults() {
                 <div className="space-y-1">
                   <Badge className={`text-lg px-3 py-1 ${getScoreBadgeColor(scorePercentage)} animate-bounce`}>
                     {scorePercentage}%
-                       </Badge>
-                     <p className="text-sm text-muted-foreground">{getScoreMessage(scorePercentage)}</p>
+                  </Badge>
+                  <p className="text-sm text-muted-foreground">{getScoreMessage(scorePercentage)}</p>
                 </div>
-                   <div className="flex items-center text-yellow-500">
-                      <Star className="h-5 w-5 mr-1" fill="currentColor" />
-                  <span className="font-semibold">{result.maxScore} points</span>
+                <div className="flex items-center text-yellow-500">
+                  <Star className="h-5 w-5 mr-1" fill="currentColor" />
+                  <span className="font-semibold">{totalScore} / {maxScore} points</span>
                 </div>
               </div>
               <Progress value={scorePercentage} className="h-2 bg-blue-100 dark:bg-blue-900" />
@@ -209,7 +225,7 @@ export default function AssignmentResults() {
                     <span>Total Questions</span>
                   </div>
                   <span className="font-semibold">{totalQuestions}</span>
-                   </div>
+                </div>
               </div>
             </CardContent>
           </Card>
@@ -374,56 +390,61 @@ export default function AssignmentResults() {
                         )}
 
                     {question.type === 'code' && (
-                      <>
-                        <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg mb-4 border border-gray-200 dark:border-gray-700">
-                          <p className="font-medium mb-2 text-gray-700 dark:text-gray-300">Your Code:</p>
-                          <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                            {(() => {
-                              try {
-                                if (typeof answer?.answer === 'string') {
-                                  const parsedAnswer = JSON.parse(answer.answer);
-                                  return parsedAnswer.code || "No code provided";
-                                } else if (answer?.answer?.code) {
-                                  return answer.answer.code;
-                                }
-                                return "No code provided";
-                              } catch (e) {
-                                return "No code provided";
-                              }
-                            })()}
-                          </pre>
-                        </div>
-                        <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                          <div className={`p-4 rounded-lg transition-all duration-300 ${
-                            isCorrect 
-                              ? 'bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800' 
-                              : 'bg-red-100 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800'
-                          }`}>
-                            <p className="font-medium mb-2">Your Output:</p>
-                            <pre className="whitespace-pre-wrap text-sm font-mono bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                              {(() => {
-                                try {
-                                  if (typeof answer?.answer === 'string') {
-                                    const parsedAnswer = JSON.parse(answer.answer);
-                                    return parsedAnswer.output || "No output";
-                                  } else if (answer?.answer?.output) {
-                                    return answer.answer.output;
-                                  }
-                                  return "No output";
-                                } catch (e) {
-                                  return "No output";
-                                }
-                              })()}
-                            </pre>
-                          </div>
-                          <div className="p-4 rounded-lg bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800">
-                            <p className="font-medium mb-2">Expected Output:</p>
-                            <pre className="whitespace-pre-wrap text-sm font-mono bg-white dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
-                              {question.correctAnswer}
-                            </pre>
-                          </div>
-                        </div>
-                      </>
+                      (() => {
+                        let parsedAnswer: any = {};
+                        try {
+                          parsedAnswer = typeof answer?.answer === 'string' ? JSON.parse(answer.answer) : answer?.answer || {};
+                        } catch (e) {
+                          parsedAnswer = {};
+                        }
+                        const testResults = parsedAnswer.testResults || [];
+                        const testCasesPassed = parsedAnswer.testCasesPassed ?? testResults.filter((t: any) => t.passed).length;
+                        const testCasesTotal = parsedAnswer.testCasesTotal ?? testResults.length;
+                        const points = answer?.points ?? 0;
+                        return (
+                          <>
+                            <div className="p-4 bg-gray-100 dark:bg-gray-800 rounded-lg mb-4 border border-gray-200 dark:border-gray-700">
+                              <p className="font-medium mb-2 text-gray-700 dark:text-gray-300">Your Code:</p>
+                              <pre className="whitespace-pre-wrap text-sm font-mono bg-gray-50 dark:bg-gray-900 p-4 rounded-lg border border-gray-200 dark:border-gray-700">
+                                {parsedAnswer.code || "No code provided"}
+                              </pre>
+                            </div>
+                            <div className="mb-4">
+                              <p className="font-medium mb-2 text-gray-700 dark:text-gray-300">Test Case Results:</p>
+                              <div className="overflow-x-auto">
+                                <table className="min-w-full text-sm border rounded-lg">
+                                  <thead>
+                                    <tr className="bg-gray-200 dark:bg-gray-700">
+                                      <th className="px-3 py-2 text-left">#</th>
+                                      <th className="px-3 py-2 text-left">Input</th>
+                                      <th className="px-3 py-2 text-left">Expected Output</th>
+                                      <th className="px-3 py-2 text-left">Your Output</th>
+                                      <th className="px-3 py-2 text-left">Result</th>
+                                    </tr>
+                                  </thead>
+                                  <tbody>
+                                    {testResults.map((tr: any, idx: number) => (
+                                      <tr key={idx} className="border-b last:border-b-0">
+                                        <td className="px-3 py-2">{idx + 1}</td>
+                                        <td className="px-3 py-2 whitespace-pre-wrap">{tr.input}</td>
+                                        <td className="px-3 py-2 whitespace-pre-wrap">{tr.output}</td>
+                                        <td className="px-3 py-2 whitespace-pre-wrap">{tr.actualOutput}</td>
+                                        <td className={`px-3 py-2 font-bold ${tr.passed ? 'text-green-600' : 'text-red-600'}`}>{tr.passed ? 'Pass' : 'Fail'}</td>
+                                      </tr>
+                                    ))}
+                                  </tbody>
+                                </table>
+                              </div>
+                              <div className="mt-2 text-sm text-gray-700 dark:text-gray-300">
+                                <span className="font-semibold">Test Cases Passed:</span> {testCasesPassed} / {testCasesTotal}
+                              </div>
+                              <div className="mt-1 text-sm text-gray-700 dark:text-gray-300">
+                                <span className="font-semibold">Score for this question:</span> {points.toFixed(2)}
+                              </div>
+                            </div>
+                          </>
+                        );
+                      })()
                     )}
 
                     {answer?.feedback && (

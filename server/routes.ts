@@ -2245,20 +2245,35 @@ export async function registerRoutes(app: Express): Promise<Server> {
         
         // For code questions
         if (question.type === 'code') {
-          const answerValue = typeof answer === 'string' ? JSON.parse(answer) : answer;
+          let answerValue = typeof answer === 'string' ? JSON.parse(answer) : answer;
+          if (!answerValue || typeof answerValue !== 'object') {
+            answerValue = {};
+          }
+          // If testResults are present, use them for scoring
+          if (answerValue && Array.isArray(answerValue.testResults)) {
+            const testResults = answerValue.testResults;
+            const testCasesPassed = answerValue.testCasesPassed ?? testResults.filter((t: any) => t.passed).length;
+            const testCasesTotal = answerValue.testCasesTotal ?? testResults.length;
+            const points = answerValue.points ?? (testCasesTotal > 0 ? (testCasesPassed / testCasesTotal) * (question.points || 1) : 0);
+            const isCorrect = testCasesPassed === testCasesTotal && testCasesTotal > 0;
+            return {
+              questionId: question._id?.toString() || index.toString(),
+              answer: answerValue,
+              isCorrect,
+              points,
+              feedback: `Passed ${testCasesPassed} of ${testCasesTotal} test cases`,
+              correctAnswer: question.correctAnswer
+            };
+          }
+          // Fallback: old logic if testResults missing
           const { code, output } = answerValue;
-          
-          // Compare output with expected output
-          const isCorrect = output.trim() === question.correctAnswer.trim();
-          
+          const isCorrect = output && output.trim() === String(question.correctAnswer).trim();
           return {
-            questionId: index.toString(),
+            questionId: question._id?.toString() || index.toString(),
             answer: answerValue,
             isCorrect,
             points: isCorrect ? question.points : 0,
-            feedback: isCorrect 
-              ? "Correct answer" 
-              : `Incorrect. Expected output: ${question.correctAnswer}`,
+            feedback: isCorrect ? "Correct output" : `Incorrect output. Expected: ${question.correctAnswer}`,
             correctAnswer: question.correctAnswer
           };
         }
@@ -2298,7 +2313,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
 
       // Calculate total score
-      const totalScore = processedAnswers.reduce((sum, answer) => sum + answer.points, 0);
+      const totalScore = processedAnswers.reduce((sum, answer) => sum + (answer.isCorrect ? (answer.points || 0) : 0), 0);
 
       // Save submission
       const submission = new TestSubmission({
@@ -2366,47 +2381,65 @@ export async function registerRoutes(app: Express): Promise<Server> {
 
       // Process answers
       const processedAnswers = await Promise.all(assignment.questions.map(async (question, index) => {
-        const answer = answers[index.toString()];
-
-        // For code questions
+        const answerRaw = answers[index.toString()];
+        let answerValue = answerRaw;
         if (question.type === 'code') {
-          // ... existing code question handling ...
+          answerValue = typeof answerRaw === 'string' ? JSON.parse(answerRaw) : answerRaw;
+          if (!answerValue || typeof answerValue !== 'object') {
+            answerValue = {};
+          }
+          // If testResults are present, use them for scoring
+          if (answerValue && Array.isArray(answerValue.testResults)) {
+            const testResults = answerValue.testResults;
+            const testCasesPassed = answerValue.testCasesPassed ?? testResults.filter((t: any) => t.passed).length;
+            const testCasesTotal = answerValue.testCasesTotal ?? testResults.length;
+            const points = answerValue.points ?? (testCasesTotal > 0 ? (testCasesPassed / testCasesTotal) * (question.points || 1) : 0);
+            const isCorrect = testCasesPassed === testCasesTotal && testCasesTotal > 0;
+            return {
+              questionId: question._id?.toString() || index.toString(),
+              answer: answerValue,
+              isCorrect,
+              points,
+              feedback: `Passed ${testCasesPassed} of ${testCasesTotal} test cases`,
+              correctAnswer: question.correctAnswer
+            };
+          }
+          // Fallback: old logic if testResults missing
+          const { code, output } = answerValue;
+          const isCorrect = output && output.trim() === String(question.correctAnswer).trim();
+          return {
+            questionId: question._id?.toString() || index.toString(),
+            answer: answerValue,
+            isCorrect,
+            points: isCorrect ? question.points : 0,
+            feedback: isCorrect ? "Correct output" : `Incorrect output. Expected: ${question.correctAnswer}`,
+            correctAnswer: question.correctAnswer
+          };
         }
-        
         // For non-code questions
-        let answerValue;
         if (question.type === 'mcq') {
-          // For MCQ, the answer should be the selected option
-          answerValue = answer?.selectedOption || answer || '';
-        } else {
-          // For fill-in-blank, use the answer directly
-          answerValue = answer?.answer || answer || '';
+          answerValue = answerRaw?.selectedOption || answerRaw || '';
+        } else if (question.type === 'fill') {
+          answerValue = answerRaw?.answer || answerRaw || '';
         }
-
         let isCorrect = false;
-
         if (question.type === 'fill') {
-          // For fill-in-blank, do case-insensitive comparison and trim whitespace
           const studentAnswer = String(answerValue).toLowerCase().trim();
           const correctAnswer = String(question.correctAnswer).toLowerCase().trim();
           isCorrect = studentAnswer === correctAnswer;
-
           console.log('Fill-in-blank validation:', {
             studentAnswer,
             correctAnswer,
             isCorrect
           });
         } else if (question.type === 'mcq') {
-          // For MCQ, do exact comparison
           isCorrect = question.correctAnswer === answerValue;
-          
           console.log('MCQ validation:', {
             studentAnswer: answerValue,
             correctAnswer: question.correctAnswer,
             isCorrect
           });
         }
-
         return {
           questionId: index.toString(),
           answer: answerValue,
@@ -2420,7 +2453,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }));
 
       // Calculate total score and percentage
-      const totalScore = processedAnswers.reduce((sum, answer) => sum + answer.points, 0);
+      const totalScore = processedAnswers.reduce((sum, answer) => sum + (answer.isCorrect ? (answer.points || 0) : 0), 0);
       const maxScore = assignment.questions.reduce((sum: number, q: any) => sum + q.points, 0);
       const scorePercentage = Math.round((totalScore / maxScore) * 100);
 

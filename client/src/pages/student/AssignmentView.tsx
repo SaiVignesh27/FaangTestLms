@@ -130,23 +130,26 @@ export default function AssignmentView() {
   };
 
   // Handler for updating answers from CodeEditor
-  const handleCodeAnswerChange = (questionNumber: number, answer: { code?: string; output?: string }) => {
-    setAnswers(prev => {
-      const answerKey = `q${questionNumber}`;
-      const existingAnswer = prev[answerKey];
-      let parsedExisting: { code?: string; output?: string } = {};
+  const handleCodeAnswerChange = (questionIdentifier: string, answer: { code?: string; output?: string; testResults?: any[]; score?: number }) => {
+    setAnswers((prev: Record<string, string>) => {
+      const existingAnswer = prev[questionIdentifier];
+      let parsedExisting: { code?: string; output?: string; testResults?: any[]; score?: number } = {};
       try {
         if (existingAnswer) {
           parsedExisting = JSON.parse(existingAnswer);
         }
       } catch (e) {
-        console.error('Failed to parse existing answer for', answerKey, e);
+        console.error('Failed to parse existing answer for', questionIdentifier, e);
       }
-      // Merge existing answer parts with new changes (code or output)
+      // Merge existing answer parts with new changes
       const updatedAnswer = { ...parsedExisting, ...answer };
-      // Store the updated answer object as a JSON string
-      const updatedAnswers = { ...prev, [answerKey]: JSON.stringify(updatedAnswer) };
-      // Update localStorage immediately
+      // Add testCasesPassed, testCasesTotal, points if testResults present
+      if (updatedAnswer.testResults) {
+        (updatedAnswer as any).testCasesPassed = updatedAnswer.testResults.filter((t: any) => t.passed).length;
+        (updatedAnswer as any).testCasesTotal = updatedAnswer.testResults.length;
+        (updatedAnswer as any).points = updatedAnswer.score ?? ((updatedAnswer as any).testCasesTotal > 0 ? ((updatedAnswer as any).testCasesPassed / (updatedAnswer as any).testCasesTotal) : 0);
+      }
+      const updatedAnswers = { ...prev, [questionIdentifier]: JSON.stringify(updatedAnswer) };
       localStorage.setItem(`answers-${id}`, JSON.stringify(updatedAnswers));
       return updatedAnswers;
     });
@@ -327,7 +330,7 @@ export default function AssignmentView() {
                 description={question.description}
                 testId={id}
                 questionId={(questionNumber - 1).toString()}
-                onAnswerChange={(answer) => handleCodeAnswerChange(questionNumber, answer)}
+                onAnswerChange={(answer) => handleCodeAnswerChange((question._id || index.toString()), answer)}
               />
             </div>
           </div>
