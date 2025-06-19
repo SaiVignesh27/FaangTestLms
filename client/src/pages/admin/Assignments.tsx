@@ -86,6 +86,7 @@ import {
   Minus,
   Timer
 } from 'lucide-react';
+import { ValidationProgramEditor } from '@/components/dashboard/ValidationProgramEditor';
 
 // Form schema for creating/editing assignments
 const questionSchema = z.object({
@@ -94,9 +95,16 @@ const questionSchema = z.object({
   options: z.array(z.string()).optional(),
   correctAnswer: z.union([z.string(), z.array(z.string())]),
   codeTemplate: z.string().optional(),
+  validationProgram: z.object({
+    java: z.string().optional(),
+    python: z.string().optional(),
+    cpp: z.string().optional(),
+    javascript: z.string().optional(),
+  }).optional(),
   testCases: z.array(z.object({
     input: z.string(),
     output: z.string(),
+    description: z.string().optional(),
   })).optional(),
   points: z.number().default(1),
 });
@@ -153,6 +161,8 @@ export default function Assignments() {
           options: ['', '', '', ''],
           correctAnswer: '',
           points: 1,
+          validationProgram: { java: '', python: '', cpp: '', javascript: '' },
+          testCases: [{ input: '', output: '', description: '' }],
         },
       ],
       visibility: 'public',
@@ -201,6 +211,8 @@ export default function Assignments() {
             options: ['', '', '', ''],
             correctAnswer: '',
             points: 1,
+            validationProgram: { java: '', python: '', cpp: '', javascript: '' },
+            testCases: [{ input: '', output: '', description: '' }],
           },
         ],
         visibility: 'public',
@@ -286,6 +298,12 @@ export default function Assignments() {
           // Ensure correctAnswer is a string for MCQ
           return { ...q, correctAnswer: q.correctAnswer.toString() };
         }
+        if (q.type === 'code') {
+          return {
+            ...q,
+            validationProgram: q.validationProgram || { java: '', python: '', cpp: '', javascript: '' }
+          };
+        }
         return q;
       })
     };
@@ -311,6 +329,8 @@ export default function Assignments() {
       options: ['', '', '', ''],
       correctAnswer: '',
       points: 1,
+      validationProgram: { java: '', python: '', cpp: '', javascript: '' },
+      testCases: [{ input: '', output: '', description: '' }],
     });
   };
 
@@ -476,6 +496,25 @@ export default function Assignments() {
               )}
             />
 
+            <FormField
+              control={form.control}
+              name={`questions.${index}.validationProgram`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Validation Program</FormLabel>
+                  <FormControl>
+                    <ValidationProgramEditor
+                      initialPrograms={field.value}
+                      onSave={(programs) => {
+                        field.onChange(programs);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+
             <div className="space-y-4">
               <div className="flex justify-between items-center">
                 <div>
@@ -492,7 +531,7 @@ export default function Assignments() {
                     const currentTestCases = form.getValues(`questions.${index}.testCases`) || [];
                     form.setValue(`questions.${index}.testCases`, [
                       ...currentTestCases,
-                      { input: '', output: '' }
+                      { input: '', output: '', description: '' }
                     ]);
                   }}
                   className="shadow-sm hover:shadow-md transition-all duration-200"
@@ -523,7 +562,7 @@ export default function Assignments() {
                       </Button>
                     </div>
 
-                    <div className="grid grid-cols-2 gap-4">
+                    <div className="grid grid-cols-3 gap-4">
                       <FormField
                         control={form.control}
                         name={`questions.${index}.testCases.${testCaseIndex}.input`}
@@ -560,6 +599,23 @@ export default function Assignments() {
                                     form.setValue(`questions.${index}.correctAnswer`, e.target.value);
                                   }
                                 }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name={`questions.${index}.testCases.${testCaseIndex}.description`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Description (Optional)</FormLabel>
+                            <FormControl>
+                              <Input
+                                {...field}
+                                placeholder="Enter test case description"
                               />
                             </FormControl>
                             <FormMessage />

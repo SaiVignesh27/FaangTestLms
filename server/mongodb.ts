@@ -505,16 +505,23 @@ export class MongoDBStorage implements IStorage {
   
   async updateAssignment(id: string, assignmentData: Partial<Assignment>): Promise<Assignment | null> {
     await this.connect();
-    
-    // Update the updatedAt field
-    assignmentData.updatedAt = new Date();
-    
     const result = await this.assignments.findOneAndUpdate(
       { _id: id },
       { $set: assignmentData },
       { returnDocument: 'after' }
     );
-    
+    return result || null;
+  }
+
+  async replaceAssignment(id: string, assignmentData: Assignment): Promise<Assignment | null> {
+    await this.connect();
+    // Remove _id from the replacement document
+    const { _id, ...doc } = assignmentData;
+    const result = await this.assignments.findOneAndReplace(
+      { _id: id },
+      doc,
+      { returnDocument: 'after' }
+    );
     return result || null;
   }
   

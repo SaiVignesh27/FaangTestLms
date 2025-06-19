@@ -1122,8 +1122,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ error: 'Access denied' });
       }
       const assignmentData = req.body;
+      console.log('PATCH /api/admin/assignments/:id received assignmentData.questions:', JSON.stringify(assignmentData.questions, null, 2));
 
-      const updatedAssignment = await mongoStorage.updateAssignment(assignmentId, assignmentData);
+      // Use replaceOne for full document replacement (except _id)
+      const { _id, ...rest } = assignmentData;
+      const updatedAssignment = await mongoStorage.replaceAssignment(assignmentId, rest);
 
       if (!updatedAssignment) {
         return res.status(404).json({ error: 'Assignment not found' });
@@ -2108,21 +2111,29 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { code, languageId, testId, questionId } = req.body;
       console.log('Received compilation request:', { languageId, testId, questionId });
 
-      // Fetch test
-      const test = await mongoStorage.getTest(testId);
-      if (!test) {
-        console.log('Test not found:', testId);
-        return res.status(404).json({ error: 'Test not found' });
+      // Fetch test or assignment
+      let testOrAssignment = await mongoStorage.getTest(testId);
+      let isAssignment = false;
+      if (!testOrAssignment) {
+        testOrAssignment = await mongoStorage.getAssignment(testId);
+        isAssignment = true;
+      }
+      if (!testOrAssignment) {
+        console.log('Test or Assignment not found:', testId);
+        return res.status(404).json({ error: 'Test or Assignment not found' });
       }
 
       // Fetch question
-      const question = test.questions.find(q => {
+      console.log('Questions array:', JSON.stringify(testOrAssignment.questions, null, 2));
+      console.log('Looking for questionId:', questionId);
+      const question = testOrAssignment.questions.find(q => {
         if (q._id) {
           return q._id.toString() === questionId;
         }
-        const index = test.questions.indexOf(q);
+        const index = testOrAssignment.questions.indexOf(q);
         return index.toString() === questionId;
       });
+      console.log('Matched question:', JSON.stringify(question, null, 2));
 
       if (!question) {
         console.log('Question not found:', questionId);
@@ -2171,11 +2182,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
           let stdout = result.stdout ? Buffer.from(result.stdout, 'base64').toString() : '';
           const stderr = result.stderr ? Buffer.from(result.stderr, 'base64').toString() : '';
           const compileOutput = result.compile_output ? Buffer.from(result.compile_output, 'base64').toString() : '';
-          // For Java, output is base64-encoded string of the number, e.g., 'MTIK' => '12\n'
           stdout = stdout.trim();
-          // Use testCase.output for expected output
           const output = (testCase.output || '').trim();
-          // Compare after trimming and removing newlines
           const isCorrect = stdout.replace(/\r?\n/g, '') === output.replace(/\r?\n/g, '');
 
           testResults.push({
@@ -2460,6 +2468,122 @@ export async function registerRoutes(app: Express): Promise<Server> {
       console.error('Error submitting assignment:', error);
       res.status(500).json({ 
         error: 'Failed to submit assignment',
+        details: error instanceof Error ? error.message : 'Unknown error'
+      });
+    }
+  });
+
+  // Code execution for assignments
+  app.post('/api/compile/assignment', async (req, res) => {
+    try {
+      const { code, languageId, assignmentId, questionId } = req.body;
+      console.log('Received assignment compilation request:', { languageId, assignmentId, questionId });
+
+      // Fetch assignment
+      const assignment = await mongoStorage.getAssignment(assignmentId);
+      if (!assignment) {
+        console.log('Assignment not found:', assignmentId);
+        return res.status(404).json({ error: 'Assignment not found' });
+      }
+
+      // Fetch question
+      const question = assignment.questions.find(q => {
+        if (q._id) {
+          return q._id.toString() === questionId;
+        }
+        const index = assignment.questions.indexOf(q);
+        return index.toString() === questionId;
+      });
+
+      if (!question) {
+        console.log('Question not found:', questionId);
+        return res.status(404).json({ error: 'Question not found' });
+      }
+
+      // Get validation program
+      let validationProgram = '';
+      switch (languageId) {
+        case 62:
+          validationProgram = (question as any).validationProgram?.java || '';
+          console.log('Java validation program:', validationProgram);
+          break;
+        case 71:
+          validationProgram = (question as any).validationProgram?.python || '';
+          console.log('Python validation program:', validationProgram);
+          break;
+        case 54:
+          validationProgram = (question as any).validationProgram?.cpp || '';
+          break;
+        case 63:
+          validationProgram = (question as any).validationProgram?.javascript || '';
+          break;
+        default:
+          return res.status(400).json({ error: 'Unsupported language' });
+      }
+
+      // For Java/C++, require the placeholder
+      if ((languageId === 62 || languageId === 54) && !validationProgram.includes('// STUDENT_CODE_PLACEHOLDER')) {
+        return res.status(400).json({ error: 'Validation program must include // STUDENT_CODE_PLACEHOLDER for Java or C++' });
+      }
+
+      // Defensive: ensure testCases exists
+      if (!question.testCases || !Array.isArray(question.testCases)) {
+        return res.status(400).json({ error: 'No test cases found for this question' });
+      }
+
+      const testResults = [];
+      for (const testCase of question.testCases) {
+        const combinedCode = combineCodeWithValidation(code, validationProgram, languageId);
+        console.log('Sending to Judge0:', { languageId, combinedCode, input: testCase.input });
+        try {
+          const token = await submitCode(combinedCode, languageId, testCase.input);
+          const result = await getSubmissionResult(token);
+          console.log('Received from Judge0:', result);
+
+          // Decode outputs
+          let stdout = result.stdout ? Buffer.from(result.stdout, 'base64').toString() : '';
+          const stderr = result.stderr ? Buffer.from(result.stderr, 'base64').toString() : '';
+          const compileOutput = result.compile_output ? Buffer.from(result.compile_output, 'base64').toString() : '';
+          stdout = stdout.trim();
+          const output = (testCase.output || '').trim();
+          const isCorrect = stdout.replace(/\r?\n/g, '') === output.replace(/\r?\n/g, '');
+
+          testResults.push({
+            passed: isCorrect,
+            input: testCase.input,
+            output,
+            actualOutput: stdout,
+            executionTime: result.time || 0,
+            error: stderr || compileOutput,
+            fullOutput: stdout
+          });
+        } catch (err) {
+          console.error('Error processing test case:', err);
+          testResults.push({
+            passed: false,
+            input: testCase.input,
+            output: (testCase.output || '').trim(),
+            actualOutput: '',
+            executionTime: 0,
+            error: err instanceof Error ? err.message : 'Unknown error',
+            fullOutput: ''
+          });
+        }
+      }
+
+      const totalPassed = testResults.filter(t => t.passed).length;
+      const score = Math.round((totalPassed / testResults.length) * 100);
+
+      res.json({
+        output: testResults.length > 0 ? testResults[testResults.length - 1].actualOutput : '',
+        testResults,
+        score,
+        executionTime: Math.max(...testResults.map(t => parseFloat(t.executionTime.toString()) || 0))
+      });
+    } catch (error) {
+      console.error('Error compiling assignment code:', error);
+      res.status(500).json({
+        error: 'Internal server error',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
     }

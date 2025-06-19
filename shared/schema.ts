@@ -76,10 +76,17 @@ export const questionSchema = z.object({
   options: z.array(z.string()).optional(),
   correctAnswer: z.union([z.string(), z.array(z.string())]),
   codeTemplate: z.string().optional(),
+  validationProgram: z.object({
+    java: z.string().optional(),
+    python: z.string().optional(),
+    cpp: z.string().optional(),
+    javascript: z.string().optional()
+  }).optional(),
   testCases: z.array(
     z.object({
       input: z.string(),
       output: z.string(),
+      description: z.string().optional()
     })
   ).optional(),
   points: z.number().default(1),

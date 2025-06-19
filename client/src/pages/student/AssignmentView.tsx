@@ -221,8 +221,8 @@ export default function AssignmentView() {
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
 
   // Render question based on type
-  const renderQuestion = (question: Question) => {
-    const questionNumber = question.questionNumber || 0;
+  const renderQuestion = (question: Question, index: number) => {
+    const questionNumber = question.questionNumber ?? (index + 1);
     const answerKey = `q${questionNumber}`;
 
     switch (question.type) {
@@ -325,6 +325,8 @@ export default function AssignmentView() {
                 readOnly={false}
                 question={question.text}
                 description={question.description}
+                testId={id}
+                questionId={(questionNumber - 1).toString()}
                 onAnswerChange={(answer) => handleCodeAnswerChange(questionNumber, answer)}
               />
             </div>
@@ -422,10 +424,10 @@ export default function AssignmentView() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {getSectionQuestions().map((question) => (
-                <div key={question._id || question.questionNumber} className="mb-6">
-                  <h3 className="font-medium mb-2">Question {question.questionNumber}</h3>
-                  {renderQuestion(question)}
+              {getSectionQuestions().map((question, idx) => (
+                <div key={question._id || question.questionNumber || idx} className="mb-6">
+                  <h3 className="font-medium mb-2">Question {question.questionNumber ?? (idx + 1)}</h3>
+                  {renderQuestion(question, idx)}
                 </div>
               ))}
             </CardContent>
