@@ -79,6 +79,23 @@ const validateAnswer = (question: any, answer: any): boolean => {
   }
 };
 
+// Combine student code with validation program
+function combineCodeWithValidation(studentCode: string, validationProgram: string, languageId: number): string {
+  switch (languageId) {
+    case 62: // Java
+      // Insert student code inside Main class, above main method
+      // The validation program must have // STUDENT_CODE_PLACEHOLDER inside the Main class
+      return validationProgram.replace('// STUDENT_CODE_PLACEHOLDER', studentCode);
+    case 54: // C++
+      return validationProgram.replace('// STUDENT_CODE_PLACEHOLDER', studentCode);
+    case 71: // Python
+    case 63: // JavaScript
+      return `${studentCode}\n\n${validationProgram}`;
+    default:
+      throw new Error('Unsupported language');
+  }
+}
+
 export async function registerRoutes(app: Express): Promise<Server> {
   // Initialize MongoDB connection
   await mongoStorage.connect();
@@ -2088,64 +2105,115 @@ export async function registerRoutes(app: Express): Promise<Server> {
   // Code execution routes
   app.post('/api/compile/test', async (req, res) => {
     try {
-      const { sourceCode, languageId, testCases, questionId } = req.body;
-  
-      if (!sourceCode || !languageId) {
-        return res.status(400).json({ error: 'Source code and language ID are required' });
+      const { code, languageId, testId, questionId } = req.body;
+      console.log('Received compilation request:', { languageId, testId, questionId });
+
+      // Fetch test
+      const test = await mongoStorage.getTest(testId);
+      if (!test) {
+        console.log('Test not found:', testId);
+        return res.status(404).json({ error: 'Test not found' });
       }
-  
-      // No need to encode to base64 since local server is configured with base64_encoded=false
-      const input = testCases?.[0]?.input || '';
-  
-      // Submit code to local Judge0 server
-      const response = await fetch('http://localhost:3000/submissions/?base64_encoded=false&wait=true', {
-        method: 'POST',
-        headers: {
-          'content-type': 'application/json'
-        },
-        body: JSON.stringify({
-          source_code: sourceCode,
-          language_id: languageId,
-          stdin: input
-        })
+
+      // Fetch question
+      const question = test.questions.find(q => {
+        if (q._id) {
+          return q._id.toString() === questionId;
+        }
+        const index = test.questions.indexOf(q);
+        return index.toString() === questionId;
       });
-  
-      if (!response.ok) {
-        const errorData = await response.json().catch(() => ({}));
-        console.error('Judge0 submission error:', errorData);
-        throw new Error(`Failed to submit code to Judge0: ${response.statusText}`);
+
+      if (!question) {
+        console.log('Question not found:', questionId);
+        return res.status(404).json({ error: 'Question not found' });
       }
-  
-      const submissionResult = await response.json();
-  
-      // Process test results
-      const testResults = testCases?.map((testCase: { expectedOutput: string; input: string }) => {
-        const passed = (submissionResult.stdout || '').trim() === (testCase.expectedOutput || '').trim();
-        return {
-          passed,
-          input: testCase.input,
-          expectedOutput: testCase.expectedOutput,
-          actualOutput: submissionResult.stdout,
-          executionTime: submissionResult.time || 0,
-          error: submissionResult.stderr || submissionResult.compile_output
-        };
-      }) || [];
-  
-      const score = testResults.length > 0
-        ? (testResults.filter((t: { passed: boolean }) => t.passed).length / testResults.length) * 100
-        : 0;
-  
+
+      // Get validation program
+      let validationProgram = '';
+      switch (languageId) {
+        case 62:
+          validationProgram = (question as any).validationProgram?.java || '';
+          console.log('Java validation program:', validationProgram);
+          break;
+        case 71:
+          validationProgram = (question as any).validationProgram?.python || '';
+          console.log('Python validation program:', validationProgram);
+          break;
+        case 54:
+          validationProgram = (question as any).validationProgram?.cpp || '';
+          break;
+        case 63:
+          validationProgram = (question as any).validationProgram?.javascript || '';
+          break;
+        default:
+          return res.status(400).json({ error: 'Unsupported language' });
+      }
+
+      // For Java/C++, require the placeholder
+      if ((languageId === 62 || languageId === 54) && !validationProgram.includes('// STUDENT_CODE_PLACEHOLDER')) {
+        return res.status(400).json({ error: 'Validation program must include // STUDENT_CODE_PLACEHOLDER for Java or C++' });
+      }
+
+      // Defensive: ensure testCases exists
+      if (!question.testCases || !Array.isArray(question.testCases)) {
+        return res.status(400).json({ error: 'No test cases found for this question' });
+      }
+
+      const testResults = [];
+      for (const testCase of question.testCases) {
+        const combinedCode = combineCodeWithValidation(code, validationProgram, languageId);
+        try {
+          const token = await submitCode(combinedCode, languageId, testCase.input);
+          const result = await getSubmissionResult(token);
+
+          // Decode outputs
+          let stdout = result.stdout ? Buffer.from(result.stdout, 'base64').toString() : '';
+          const stderr = result.stderr ? Buffer.from(result.stderr, 'base64').toString() : '';
+          const compileOutput = result.compile_output ? Buffer.from(result.compile_output, 'base64').toString() : '';
+          // For Java, output is base64-encoded string of the number, e.g., 'MTIK' => '12\n'
+          stdout = stdout.trim();
+          // Use testCase.output for expected output
+          const output = (testCase.output || '').trim();
+          // Compare after trimming and removing newlines
+          const isCorrect = stdout.replace(/\r?\n/g, '') === output.replace(/\r?\n/g, '');
+
+          testResults.push({
+            passed: isCorrect,
+            input: testCase.input,
+            output,
+            actualOutput: stdout,
+            executionTime: result.time || 0,
+            error: stderr || compileOutput,
+            fullOutput: stdout
+          });
+        } catch (err) {
+          console.error('Error processing test case:', err);
+          testResults.push({
+            passed: false,
+            input: testCase.input,
+            output: (testCase.output || '').trim(),
+            actualOutput: '',
+            executionTime: 0,
+            error: err instanceof Error ? err.message : 'Unknown error',
+            fullOutput: ''
+          });
+        }
+      }
+
+      const totalPassed = testResults.filter(t => t.passed).length;
+      const score = Math.round((totalPassed / testResults.length) * 100);
+
       res.json({
-        output: submissionResult.stdout || submissionResult.stderr || submissionResult.compile_output,
+        output: testResults.length > 0 ? testResults[testResults.length - 1].actualOutput : '',
         testResults,
         score,
-        executionTime: submissionResult.time,
-        status: submissionResult.status
+        executionTime: Math.max(...testResults.map(t => parseFloat(t.executionTime.toString()) || 0))
       });
     } catch (error) {
-      console.error('Error executing code:', error);
+      console.error('Error compiling code:', error);
       res.status(500).json({
-        error: 'Failed to execute code',
+        error: 'Internal server error',
         details: error instanceof Error ? error.message : 'Unknown error'
       });
     }

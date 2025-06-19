@@ -58,6 +58,7 @@ import {
 } from '@/components/ui/tabs';
 import TestItem from '@/components/dashboard/TestItem';
 import { FileQuestion, Loader2, Plus, Minus, Code, CheckSquare, TextCursor } from 'lucide-react';
+import { ValidationProgramEditor } from '@/components/dashboard/ValidationProgramEditor';
 
 // Form schema for creating/editing tests
 const questionSchema = z.object({
@@ -66,10 +67,17 @@ const questionSchema = z.object({
   options: z.array(z.string()).optional(),
   correctAnswer: z.union([z.string(), z.array(z.string())]),
   codeTemplate: z.string().optional(),
-  testCase: z.object({
+  validationProgram: z.object({
+    java: z.string().optional(),
+    python: z.string().optional(),
+    cpp: z.string().optional(),
+    javascript: z.string().optional()
+  }).optional(),
+  testCases: z.array(z.object({
     input: z.string(),
     output: z.string(),
-  }).optional(),
+    description: z.string().optional()
+  })).optional(),
   points: z.number().default(1),
 });
 
@@ -85,6 +93,13 @@ const testFormSchema = z.object({
 });
 
 type TestFormValues = z.infer<typeof testFormSchema>;
+
+interface ValidationPrograms {
+  java?: string;
+  python?: string;
+  cpp?: string;
+  javascript?: string;
+}
 
 export default function Tests() {
   const { toast } = useToast();
@@ -311,84 +326,137 @@ export default function Tests() {
   };
 
   // Render question form based on type
-  const renderQuestionForm = (index: number, questionType: string) => {
-    switch (questionType) {
-      case 'mcq':
-        return (
+  const renderQuestionForm = (index: number) => {
+    const question = form.watch(`questions.${index}`);
+    const questionType = question?.type || "mcq";
+
+    return (
+      <div key={index} className="space-y-4 p-4 border rounded-lg bg-white">
+        <div className="flex justify-between items-center">
+          <h3 className="text-lg font-semibold">Question {index + 1}</h3>
+          <Button
+            type="button"
+            variant="destructive"
+            size="sm"
+            onClick={() => removeQuestion(index)}
+          >
+            Remove Question
+          </Button>
+        </div>
+
+        <FormField
+          control={form.control}
+          name={`questions.${index}.text`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Question Text</FormLabel>
+              <FormControl>
+                <Textarea {...field} placeholder="Enter your question" />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        <FormField
+          control={form.control}
+          name={`questions.${index}.type`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Question Type</FormLabel>
+              <Select
+                onValueChange={field.onChange}
+                defaultValue={field.value}
+              >
+                <FormControl>
+                  <SelectTrigger>
+                    <SelectValue placeholder="Select question type" />
+                  </SelectTrigger>
+                </FormControl>
+                <SelectContent>
+                  <SelectItem value="mcq">Multiple Choice</SelectItem>
+                  <SelectItem value="fill">Fill in the Blank</SelectItem>
+                  <SelectItem value="code">Coding Question</SelectItem>
+                </SelectContent>
+              </Select>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+
+        {questionType === "mcq" && (
           <>
             <FormField
               control={form.control}
-              name={`questions.${index}.options.0`}
+              name={`questions.${index}.options`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium">Option A</FormLabel>
+                  <FormLabel>Options</FormLabel>
                   <FormControl>
-                    <Input {...field} className="focus-visible:ring-blue-500 transition-colors duration-200" />
+                    <div className="space-y-2">
+                      {field.value?.map((option, optionIndex) => (
+                        <div key={optionIndex} className="flex gap-2">
+                          <Input
+                            value={option}
+                            onChange={(e) => {
+                              const newOptions = [...(field.value || [])];
+                              newOptions[optionIndex] = e.target.value;
+                              field.onChange(newOptions);
+                            }}
+                            placeholder={`Option ${optionIndex + 1}`}
+                          />
+                          <Button
+                            type="button"
+                            variant="destructive"
+                            size="sm"
+                            onClick={() => {
+                              const newOptions = [...(field.value || [])];
+                              newOptions.splice(optionIndex, 1);
+                              field.onChange(newOptions);
+                            }}
+                          >
+                            Remove
+                          </Button>
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          field.onChange([...(field.value || []), ""]);
+                        }}
+                      >
+                        Add Option
+                      </Button>
+                    </div>
                   </FormControl>
                   <FormMessage />
                 </FormItem>
               )}
             />
-            <FormField
-              control={form.control}
-              name={`questions.${index}.options.1`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm font-medium">Option B</FormLabel>
-                  <FormControl>
-                    <Input {...field} className="focus-visible:ring-blue-500 transition-colors duration-200" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name={`questions.${index}.options.2`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm font-medium">Option C</FormLabel>
-                  <FormControl>
-                    <Input {...field} className="focus-visible:ring-blue-500 transition-colors duration-200" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
-            <FormField
-              control={form.control}
-              name={`questions.${index}.options.3`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel className="text-sm font-medium">Option D</FormLabel>
-                  <FormControl>
-                    <Input {...field} className="focus-visible:ring-blue-500 transition-colors duration-200" />
-                  </FormControl>
-                  <FormMessage />
-                </FormItem>
-              )}
-            />
+
             <FormField
               control={form.control}
               name={`questions.${index}.correctAnswer`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium">Correct Answer</FormLabel>
-                  <Select 
-                    onValueChange={field.onChange} 
-                    defaultValue={field.value?.toString()}
-                    value={field.value?.toString()}
+                  <FormLabel>Correct Answer</FormLabel>
+                  <Select
+                    onValueChange={field.onChange}
+                    defaultValue={field.value as string}
                   >
                     <FormControl>
-                      <SelectTrigger className="focus-visible:ring-blue-500 transition-colors duration-200">
-                        <SelectValue placeholder="Select correct option" />
+                      <SelectTrigger>
+                        <SelectValue placeholder="Select correct answer" />
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      <SelectItem value="0" className="cursor-pointer transition-colors duration-200">Option A</SelectItem>
-                      <SelectItem value="1" className="cursor-pointer transition-colors duration-200">Option B</SelectItem>
-                      <SelectItem value="2" className="cursor-pointer transition-colors duration-200">Option C</SelectItem>
-                      <SelectItem value="3" className="cursor-pointer transition-colors duration-200">Option D</SelectItem>
+                      {form.watch(`questions.${index}.options`)?.map((option, i) => (
+                        <SelectItem key={i} value={option}>
+                          {option}
+                        </SelectItem>
+                      ))}
                     </SelectContent>
                   </Select>
                   <FormMessage />
@@ -396,49 +464,38 @@ export default function Tests() {
               )}
             />
           </>
-        );
+        )}
 
-      case 'fill':
-        return (
+        {questionType === "fill" && (
           <FormField
             control={form.control}
             name={`questions.${index}.correctAnswer`}
             render={({ field }) => (
               <FormItem>
-                <FormLabel className="text-sm font-medium">Correct Answer</FormLabel>
+                <FormLabel>Correct Answer</FormLabel>
                 <FormControl>
-                  <Input 
-                    placeholder="Enter the correct answer"
-                    {...field}
-                    value={field.value?.toString() || ''}
-                    onChange={(e) => field.onChange(e.target.value)}
-                    className="focus-visible:ring-blue-500 transition-colors duration-200"
-                  />
+                  <Input {...field} placeholder="Enter correct answer" />
                 </FormControl>
                 <FormMessage />
               </FormItem>
             )}
           />
-        );
+        )}
 
-      case 'code':
-        return (
-          <div className="space-y-4">
+        {questionType === "code" && (
+          <>
             <FormField
               control={form.control}
               name={`questions.${index}.codeTemplate`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel className="text-sm font-medium">Code Template</FormLabel>
-                  <FormDescription className="text-xs text-gray-500 dark:text-gray-400">
-                    Provide a starting code template for students
-                  </FormDescription>
+                  <FormLabel>Code Template</FormLabel>
                   <FormControl>
-                    <Textarea 
-                      className="font-mono h-40 focus-visible:ring-blue-500 transition-colors duration-200"
-                      placeholder="// Provide a code template for students to start with"
+                    <Textarea
                       {...field}
-                      value={field.value || ''}
+                      placeholder="Enter code template"
+                      className="font-mono"
+                      rows={5}
                     />
                   </FormControl>
                   <FormMessage />
@@ -446,64 +503,180 @@ export default function Tests() {
               )}
             />
 
-            <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium">Test Case</Label>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Provide input and expected output for the code question
-                </p>
-              </div>
+            <FormField
+              control={form.control}
+              name={`questions.${index}.validationProgram`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Validation Program</FormLabel>
+                  <FormControl>
+                    <ValidationProgramEditor
+                      initialPrograms={field.value}
+                      onSave={(programs: ValidationPrograms) => {
+                        field.onChange(programs);
+                      }}
+                    />
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
 
-              <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                <FormField
-                  control={form.control}
-                  name={`questions.${index}.testCase.input`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">Input</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          className="font-mono h-32 focus-visible:ring-blue-500 transition-colors duration-200"
-                          placeholder="Enter test input"
-                          {...field}
-                          value={field.value || ''}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
+            <FormField
+              control={form.control}
+              name={`questions.${index}.testCases`}
+              render={({ field }) => (
+                <FormItem>
+                  <FormLabel>Test Cases</FormLabel>
+                  <FormControl>
+                    <div className="space-y-4">
+                      {field.value?.map((testCase, testCaseIndex) => (
+                        <div key={testCaseIndex} className="space-y-2 p-4 border rounded-lg">
+                          <div className="flex justify-between items-center">
+                            <h4 className="font-medium">Test Case {testCaseIndex + 1}</h4>
+                            <Button
+                              type="button"
+                              variant="destructive"
+                              size="sm"
+                              onClick={() => {
+                                const newTestCases = [...(field.value || [])];
+                                newTestCases.splice(testCaseIndex, 1);
+                                field.onChange(newTestCases);
+                              }}
+                            >
+                              Remove
+                            </Button>
+                          </div>
+                          <FormField
+                            control={form.control}
+                            name={`questions.${index}.testCases.${testCaseIndex}.input`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Input</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    {...field}
+                                    placeholder="Enter test input"
+                                    className="font-mono"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`questions.${index}.testCases.${testCaseIndex}.output`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Output</FormLabel>
+                                <FormControl>
+                                  <Textarea
+                                    {...field}
+                                    placeholder="Enter test output"
+                                    className="font-mono"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                          <FormField
+                            control={form.control}
+                            name={`questions.${index}.testCases.${testCaseIndex}.description`}
+                            render={({ field }) => (
+                              <FormItem>
+                                <FormLabel>Description (Optional)</FormLabel>
+                                <FormControl>
+                                  <Input
+                                    {...field}
+                                    placeholder="Enter test case description"
+                                  />
+                                </FormControl>
+                                <FormMessage />
+                              </FormItem>
+                            )}
+                          />
+                        </div>
+                      ))}
+                      <Button
+                        type="button"
+                        variant="outline"
+                        size="sm"
+                        onClick={() => {
+                          field.onChange([
+                            ...(field.value || []),
+                            { input: "", output: "", description: "" }
+                          ]);
+                        }}
+                      >
+                        Add Test Case
+                      </Button>
+                    </div>
+                  </FormControl>
+                  <FormMessage />
+                </FormItem>
+              )}
+            />
+          </>
+        )}
+
+        <FormField
+          control={form.control}
+          name={`questions.${index}.points`}
+          render={({ field }) => (
+            <FormItem>
+              <FormLabel>Points</FormLabel>
+              <FormControl>
+                <Input
+                  type="number"
+                  {...field}
+                  onChange={(e) => field.onChange(Number(e.target.value))}
+                  min={1}
                 />
+              </FormControl>
+              <FormMessage />
+            </FormItem>
+          )}
+        />
+      </div>
+    );
+  };
 
-                <FormField
-                  control={form.control}
-                  name={`questions.${index}.testCase.output`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">Expected Output</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          className="font-mono h-32 focus-visible:ring-blue-500 transition-colors duration-200"
-                          placeholder="Enter expected output"
-                          {...field}
-                          value={field.value || ''}
-                          onChange={(e) => {
-                            field.onChange(e);
-                            // Update correctAnswer with the output value
-                            form.setValue(`questions.${index}.correctAnswer`, e.target.value);
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-              </div>
-            </div>
-          </div>
-        );
+  const getDefaultCode = (language: string) => {
+    switch (language.toLowerCase()) {
+      case 'python':
+        return `def multiply(a, b):
+    return a * b
 
+# Read input
+inputs = input().split()
+num1 = float(inputs[0])
+num2 = float(inputs[1])
+
+# Calculate and print result
+result = multiply(num1, num2)
+print(result)`;
+      case 'java':
+        return `import java.util.Scanner;
+
+public class Main {
+    public static double multiply(double a, double b) {
+        return a * b;
+    }
+
+    public static void main(String[] args) {
+        Scanner scanner = new Scanner(System.in);
+        String[] inputs = scanner.nextLine().split(" ");
+        double num1 = Double.parseDouble(inputs[0]);
+        double num2 = Double.parseDouble(inputs[1]);
+        double result = multiply(num1, num2);
+        System.out.println(result);
+        scanner.close();
+    }
+}`;
       default:
-        return null;
+        return '';
     }
   };
 
@@ -860,110 +1033,7 @@ export default function Tests() {
                               </Button>
                             </div>
 
-                            <FormField
-                              control={form.control}
-                              name={`questions.${index}.text`}
-                              render={({ field }) => (
-                                <FormItem>
-                                  <FormLabel className="text-sm font-medium">Question Text</FormLabel>
-                                  <FormControl>
-                                    <Textarea 
-                                      {...field} 
-                                      className="focus-visible:ring-blue-500 transition-colors duration-200"
-                                    />
-                                  </FormControl>
-                                  <FormMessage />
-                                </FormItem>
-                              )}
-                            />
-
-                            <div className="grid grid-cols-2 gap-4">
-                              <FormField
-                                control={form.control}
-                                name={`questions.${index}.type`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel className="text-sm font-medium">Question Type</FormLabel>
-                                    <Select 
-                                      onValueChange={(value) => {
-                                        field.onChange(value);
-                                        if (value === 'mcq') {
-                                          form.setValue(`questions.${index}.options`, ['', '', '', '']);
-                                          form.setValue(`questions.${index}.correctAnswer`, '');
-                                        } else if (value === 'fill') {
-                                          form.setValue(`questions.${index}.correctAnswer`, '');
-                                        } else if (value === 'code') {
-                                          form.setValue(`questions.${index}.codeTemplate`, '');
-                                          form.setValue(`questions.${index}.testCase`, { input: '', output: '' });
-                                          form.setValue(`questions.${index}.correctAnswer`, '');
-                                        }
-                                      }} 
-                                      defaultValue={field.value}
-                                      value={field.value}
-                                    >
-                                      <FormControl>
-                                        <SelectTrigger className="focus-visible:ring-blue-500 transition-colors duration-200">
-                                          <SelectValue placeholder="Select question type" />
-                                        </SelectTrigger>
-                                      </FormControl>
-                                      <SelectContent>
-                                        <SelectItem 
-                                          value="mcq"
-                                          className="cursor-pointer transition-colors duration-200"
-                                        >
-                                          <div className="flex items-center">
-                                            <CheckSquare className="h-4 w-4 mr-2" />
-                                            <span>Multiple Choice</span>
-                                          </div>
-                                        </SelectItem>
-                                        <SelectItem 
-                                          value="fill"
-                                          className="cursor-pointer transition-colors duration-200"
-                                        >
-                                          <div className="flex items-center">
-                                            <TextCursor className="h-4 w-4 mr-2" />
-                                            <span>Fill in the Blank</span>
-                                          </div>
-                                        </SelectItem>
-                                        <SelectItem 
-                                          value="code"
-                                          className="cursor-pointer transition-colors duration-200"
-                                        >
-                                          <div className="flex items-center">
-                                            <Code className="h-4 w-4 mr-2" />
-                                            <span>Coding Question</span>
-                                          </div>
-                                        </SelectItem>
-                                      </SelectContent>
-                                    </Select>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-
-                              <FormField
-                                control={form.control}
-                                name={`questions.${index}.points`}
-                                render={({ field }) => (
-                                  <FormItem>
-                                    <FormLabel className="text-sm font-medium">Points</FormLabel>
-                                    <FormControl>
-                                      <Input 
-                                        type="number" 
-                                        min="1" 
-                                        {...field} 
-                                        onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
-                                        className="focus-visible:ring-blue-500 transition-colors duration-200"
-                                      />
-                                    </FormControl>
-                                    <FormMessage />
-                                  </FormItem>
-                                )}
-                              />
-                            </div>
-
-                            {/* Render different form fields based on question type */}
-                            {renderQuestionForm(index, form.watch(`questions.${index}.type`))}
+                            {renderQuestionForm(index)}
                           </div>
                         </AccordionContent>
                       </AccordionItem>

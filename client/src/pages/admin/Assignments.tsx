@@ -94,10 +94,10 @@ const questionSchema = z.object({
   options: z.array(z.string()).optional(),
   correctAnswer: z.union([z.string(), z.array(z.string())]),
   codeTemplate: z.string().optional(),
-  testCase: z.object({
+  testCases: z.array(z.object({
     input: z.string(),
     output: z.string(),
-  }).optional(),
+  })).optional(),
   points: z.number().default(1),
 });
 
@@ -452,10 +452,6 @@ export default function Assignments() {
         );
 
       case 'code':
-        // Ensure testCase and its properties are initialized
-        const testCaseInput = form.watch(`questions.${index}.testCase.input`) || '';
-        const testCaseOutput = form.watch(`questions.${index}.testCase.output`) || '';
-
         return (
           <div className="space-y-4">
             <FormField
@@ -481,56 +477,98 @@ export default function Assignments() {
             />
 
             <div className="space-y-4">
-              <div>
-                <Label className="text-sm font-medium">Test Case</Label>
-                <p className="text-xs text-gray-500 dark:text-gray-400">
-                  Provide input and expected output for the code question
-                </p>
+              <div className="flex justify-between items-center">
+                <div>
+                  <Label className="text-sm font-medium">Test Cases</Label>
+                  <p className="text-xs text-gray-500 dark:text-gray-400">
+                    Add test cases to validate student code
+                  </p>
+                </div>
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="sm"
+                  onClick={() => {
+                    const currentTestCases = form.getValues(`questions.${index}.testCases`) || [];
+                    form.setValue(`questions.${index}.testCases`, [
+                      ...currentTestCases,
+                      { input: '', output: '' }
+                    ]);
+                  }}
+                  className="shadow-sm hover:shadow-md transition-all duration-200"
+                >
+                  <Plus className="h-4 w-4 mr-2" /> Add Test Case
+                </Button>
               </div>
 
-              <div className="grid grid-cols-2 gap-4 p-4 border rounded-lg bg-gray-50 dark:bg-gray-800/50">
-                <FormField
-                  control={form.control}
-                  name={`questions.${index}.testCase.input`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">Input</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          className="font-mono h-32 focus-visible:ring-blue-500 transition-colors duration-200"
-                          placeholder="Enter test input"
-                          {...field}
-                          value={testCaseInput} // Use the potentially initialized value
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+              <div className="space-y-4">
+                {form.watch(`questions.${index}.testCases`)?.map((_, testCaseIndex) => (
+                  <div key={testCaseIndex} className="p-4 border rounded-lg bg-gray-50 dark:bg-gray-800/50">
+                    <div className="flex justify-between items-center mb-4">
+                      <h4 className="text-sm font-medium">Test Case {testCaseIndex + 1}</h4>
+                      <Button
+                        type="button"
+                        variant="ghost"
+                        size="sm"
+                        onClick={() => {
+                          const currentTestCases = form.getValues(`questions.${index}.testCases`) || [];
+                          form.setValue(
+                            `questions.${index}.testCases`,
+                            currentTestCases.filter((_, i) => i !== testCaseIndex)
+                          );
+                        }}
+                        className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300"
+                      >
+                        <Minus className="h-4 w-4" />
+                      </Button>
+                    </div>
 
-                <FormField
-                  control={form.control}
-                  name={`questions.${index}.testCase.output`}
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">Expected Output</FormLabel>
-                      <FormControl>
-                        <Textarea 
-                          className="font-mono h-32 focus-visible:ring-blue-500 transition-colors duration-200"
-                          placeholder="Enter expected output"
-                          {...field}
-                          value={testCaseOutput} // Use the potentially initialized value
-                          onChange={(e) => {
-                            field.onChange(e);
-                            // Update correctAnswer with the output value
-                            form.setValue(`questions.${index}.correctAnswer`, e.target.value);
-                          }}
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
+                    <div className="grid grid-cols-2 gap-4">
+                      <FormField
+                        control={form.control}
+                        name={`questions.${index}.testCases.${testCaseIndex}.input`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Input</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                className="font-mono h-32 focus-visible:ring-blue-500 transition-colors duration-200"
+                                placeholder="Enter test input"
+                                {...field}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+
+                      <FormField
+                        control={form.control}
+                        name={`questions.${index}.testCases.${testCaseIndex}.output`}
+                        render={({ field }) => (
+                          <FormItem>
+                            <FormLabel className="text-sm font-medium">Expected Output</FormLabel>
+                            <FormControl>
+                              <Textarea 
+                                className="font-mono h-32 focus-visible:ring-blue-500 transition-colors duration-200"
+                                placeholder="Enter expected output"
+                                {...field}
+                                onChange={(e) => {
+                                  field.onChange(e);
+                                  // Update correctAnswer with the output value if it's the first test case
+                                  if (testCaseIndex === 0) {
+                                    form.setValue(`questions.${index}.correctAnswer`, e.target.value);
+                                  }
+                                }}
+                              />
+                            </FormControl>
+                            <FormMessage />
+                          </FormItem>
+                        )}
+                      />
+                    </div>
+                  </div>
+                ))}
               </div>
             </div>
           </div>
@@ -1003,7 +1041,7 @@ export default function Assignments() {
                                           form.setValue(`questions.${index}.correctAnswer`, '');
                                         } else if (value === 'code') {
                                           form.setValue(`questions.${index}.codeTemplate`, '');
-                                          form.setValue(`questions.${index}.testCase`, { input: '', output: '' });
+                                          form.setValue(`questions.${index}.testCases`, []);
                                           form.setValue(`questions.${index}.correctAnswer`, '');
                                         }
                                       }} 

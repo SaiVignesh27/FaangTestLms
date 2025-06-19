@@ -260,6 +260,8 @@ export default function TestView() {
                 readOnly={false}
                 question={question}
                 description={question.description}
+                testId={id}
+                questionId={question._id || index.toString()}
                 onAnswerChange={(answer) => handleCodeAnswerChange(question._id || index.toString(), answer)}
               />
             </div>

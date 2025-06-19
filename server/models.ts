@@ -2,15 +2,23 @@ import mongoose from 'mongoose';
 
 // Question Schema
 const questionSchema = new mongoose.Schema({
+  _id: { type: mongoose.Schema.Types.ObjectId, auto: true },
   text: { type: String, required: true },
   type: { type: String, enum: ['mcq', 'fill', 'code'], required: true },
   options: [String],
   correctAnswer: { type: mongoose.Schema.Types.Mixed, required: true },
   codeTemplate: String,
-  testCase: {
-    input: String,
-    output: String
+  validationProgram: {
+    java: String,
+    python: String,
+    cpp: String,
+    javascript: String
   },
+  testCases: [{
+    input: String,
+    output: String,
+    description: String
+  }],
   points: { type: Number, required: true }
 });
 

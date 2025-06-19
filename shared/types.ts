@@ -96,7 +96,7 @@ export interface Question {
   codeTemplate?: string;
   testCases?: {
     input: string;
-    expectedOutput: string;
+    output: string;
   }[];
 }
 

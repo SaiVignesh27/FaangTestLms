@@ -1,12 +1,13 @@
 import React, { useState, useEffect } from 'react';
 import Editor from '@monaco-editor/react';
-import { Button, Select, message, Card, Progress, Space, Typography } from 'antd';
-import { PlayCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, ReloadOutlined } from '@ant-design/icons';
+import { Button, Select, message, Card, Progress, Space, Typography, Collapse } from 'antd';
+import { PlayCircleOutlined, CheckCircleOutlined, CloseCircleOutlined, ReloadOutlined, CaretRightOutlined } from '@ant-design/icons';
 import { CodeExecutionResult } from '@shared/types';
 import { apiRequest } from '@/lib/queryClient';
 
 const { Option } = Select;
 const { Text, Title } = Typography;
+const { Panel } = Collapse;
 
 interface Language {
   id: number;
@@ -17,22 +18,61 @@ interface Language {
 interface TestResult {
   passed: boolean;
   input: string;
-  expectedOutput: string;
+  output: string;
   actualOutput: string;
   executionTime: number;
   error?: string;
 }
 
+interface TestCase {
+  input: string;
+  output: string;
+}
+
+// Add language ID mapping
+const LANGUAGE_IDS = {
+  python: 71,
+  java: 62,
+  cpp: 54,
+  javascript: 63
+};
+
+// Helper function to get language ID
+const getLanguageId = (lang: string): number => {
+  return LANGUAGE_IDS[lang.toLowerCase() as keyof typeof LANGUAGE_IDS] || 71; // Default to Python
+};
+
 interface CodeEditorProps {
-  initialCode: string;
+  initialCode?: string;
   language?: string;
   readOnly?: boolean;
   question?: string;
   description?: string;
-  testCases?: string[];
+  testId?: string;
   questionId?: string;
-  onSubmit?: (code: string, languageId: number, result: CodeExecutionResult) => void;
-  onAnswerChange?: (answer: { code?: string; output?: string }) => void;
+  templateType?: 'custom' | 'default';
+  testCases?: Array<{
+    input: string;
+    output: string;
+    description?: string;
+  }>;
+  validationProgram?: {
+    java?: string;
+    python?: string;
+    cpp?: string;
+    javascript?: string;
+  };
+  onAnswerChange?: (answer: {
+    code?: string;
+    output?: string;
+    testResults?: Array<{
+      input: string;
+      output: string;
+      passed: boolean;
+      error?: string;
+    }>;
+    score?: number;
+  }) => void;
 }
 
 const languages: Language[] = [
@@ -40,15 +80,41 @@ const languages: Language[] = [
   { id: 62, name: 'Java', version: '17' },
 ];
 
+const getDefaultCode = (language: string): string => {
+  switch (language) {
+    case 'java':
+      return `// Only implement the required function(s) below.
+// DO NOT include a main method or any input/output logic.
+// The validation program will handle testing.
+
+public static int multiply(int a, int b) {
+    // TODO: Implement the function
+    return 0;
+}`;
+    case 'python':
+      return `# Only implement the required function(s) below.
+# DO NOT include any input/output logic or if __name__ == '__main__' block.
+# The validation program will handle testing.
+
+def multiply(a, b):
+    # TODO: Implement the function
+    return 0`;
+    default:
+      return '';
+  }
+};
+
 const CodeEditor: React.FC<CodeEditorProps> = ({
   initialCode = '',
-  language = 'java',
+  language = 'python',
   readOnly = false,
   question,
   description,
-  testCases = [],
+  testId,
   questionId,
-  onSubmit,
+  templateType,
+  testCases = [],
+  validationProgram,
   onAnswerChange
 }) => {
   const [code, setCode] = useState(initialCode);
@@ -57,74 +123,21 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
   const [result, setResult] = useState<CodeExecutionResult | null>(null);
   const [error, setError] = useState<string | null>(null);
   const [output, setOutput] = useState('');
-  const [testResults, setTestResults] = useState<TestResult[]>([]);
+  const [testResults, setTestResults] = useState<Array<{
+    input: string;
+    output: string;
+    actualOutput: string;
+    passed: boolean;
+    error?: string;
+  }>>([]);
   const [score, setScore] = useState(0);
   const [isRunning, setIsRunning] = useState(false);
+  const [executionTime, setExecutionTime] = useState(0);
 
-  const handleExecute = async () => {
-    try {
-      setIsExecuting(true);
-      setError(null);
-
-      // Submit code to Judge0
-      const response = await apiRequest('POST', '/api/code/execute', {
-        code,
-        language: selectedLanguage,
-      });
-
-      const { token } = await response.json();
-
-      // Poll for results
-      let submissionResult = null;
-      let attempts = 0;
-      const maxAttempts = 10;
-
-      while (attempts < maxAttempts) {
-        const resultResponse = await apiRequest('GET', `/api/code/result/${token}`);
-        submissionResult = await resultResponse.json();
-
-        if (submissionResult.status.id !== 1 && submissionResult.status.id !== 2) {
-          break;
-        }
-
-        await new Promise(resolve => setTimeout(resolve, 1000));
-        attempts++;
-      }
-
-      if (submissionResult) {
-        setResult(submissionResult);
-        // Get the output from the result and clean it
-        let output = submissionResult.stdout || submissionResult.stderr || submissionResult.compile_output || 'No output';
-        // Remove "Your Output:" prefix if it exists
-        output = output.replace(/^Your Output:\s*/i, '').trim();
-        setOutput(output);
-        
-        // Call onAnswerChange with both code and cleaned output
-        if (onAnswerChange) {
-          onAnswerChange({ code, output });
-        }
-        
-        // Also call onSubmit if provided
-        if (onSubmit) {
-          onSubmit(code, languages.find(l => l.name === selectedLanguage)?.id || 0, {
-            ...submissionResult,
-            output: output
-          });
-        }
-      }
-    } catch (err) {
-      setError(err instanceof Error ? err.message : 'Failed to execute code');
-    } finally {
-      setIsExecuting(false);
-    }
-  };
-
-  const handleReset = () => {
+  // Update code when language changes
+  useEffect(() => {
     setCode(initialCode);
-    setOutput('');
-    setTestResults([]);
-    setScore(0);
-  };
+  }, [selectedLanguage, initialCode]);
 
   const handleRunCode = async () => {
     if (!code) {
@@ -133,89 +146,52 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     }
 
     setIsRunning(true);
-    setOutput('');
+    setResult(null);
+    setError(null);
 
     try {
-      const selectedLang = languages.find((lang: Language) => 
-        lang.name.toLowerCase() === selectedLanguage.toLowerCase()
-      );
-
-      if (!selectedLang) {
-        throw new Error('Selected language not supported');
-      }
-
-      // For Java, ensure the class name matches the file name
-      let processedCode = code;
-      if (selectedLanguage.toLowerCase() === 'java') {
-        const classNameMatch = code.match(/public\s+class\s+(\w+)/);
-        if (classNameMatch && classNameMatch[1] !== 'Main') {
-          processedCode = code.replace(/public\s+class\s+\w+/, 'public class Main');
-        }
-      }
-
-      const response = await fetch('/api/compile/test', {
-        method: 'POST',
-        headers: {
-          'Content-Type': 'application/json',
-          'Authorization': `Bearer ${localStorage.getItem('token')}`,
-          'X-User-Email': localStorage.getItem('userEmail') || ''
-        },
-        body: JSON.stringify({
-          sourceCode: processedCode,
-          languageId: selectedLang.id,
-          testCases,
-          questionId: '1'
-        }),
+      const response = await apiRequest('POST', '/api/compile/test', {
+        code,
+        languageId: getLanguageId(selectedLanguage),
+        testId,
+        questionId
       });
 
-      if (!response.ok) {
-        throw new Error('Failed to run code');
-      }
-
       const data = await response.json();
-      // Clean the output
-      let output = data.output;
-      // Remove "Your Output:" prefix if it exists
-      output = output.replace(/^Your Output:\s*/i, '').trim();
-      setOutput(output);
-      setTestResults(data.testResults);
-      setScore(data.score);
+      setResult(data);
+      setError(null);
+      setOutput(data.output || '');
+      setTestResults(data.testResults || []);
+      setScore(data.score || 0);
 
-      // Call onAnswerChange with both code and cleaned output
       if (onAnswerChange) {
-        onAnswerChange({ code, output });
+        onAnswerChange({
+          code,
+          output: data.output,
+          testResults: data.testResults,
+          score: data.score
+        });
       }
-
-      // Also call onSubmit if provided
-      if (onSubmit) {
-        const result: CodeExecutionResult = {
-          stdout: output,
-          stderr: null,
-          compile_output: null,
-          message: null,
-          time: data.executionTime?.toString() || '0',
-          memory: 0,
-          status: data.status || { id: 3, description: 'Accepted' }
-        };
-        onSubmit(code, selectedLang.id, result);
-      }
-    } catch (error) {
-      message.error(error instanceof Error ? error.message : 'Failed to run code');
+    } catch (err) {
+      console.error('Error running code:', err);
+      setError(err instanceof Error ? err.message : 'Failed to run code');
+      setResult(null);
     } finally {
       setIsRunning(false);
     }
   };
 
   const handleCodeChange = (value: string | undefined) => {
-    const newCode = value || '';
-    setCode(newCode);
-    if (onAnswerChange) {
-      onAnswerChange({ code: newCode });
+    if (value !== undefined) {
+      setCode(value);
+      if (onAnswerChange) {
+        onAnswerChange({ code: value });
+      }
     }
   };
 
   return (
-    <div className="code-editor">
+    <div className="flex flex-col h-full">
       <Space direction="vertical" size="large" style={{ width: '100%' }}>
         <Card>
           <Space>
@@ -241,23 +217,6 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
             >
               Run Code
             </Button>
-            <Button
-              icon={<ReloadOutlined />}
-              onClick={handleReset}
-              disabled={readOnly}
-            >
-              Reset
-            </Button>
-            {onSubmit && (
-              <Button
-                type="primary"
-                icon={<CheckCircleOutlined />}
-                onClick={handleExecute}
-                disabled={readOnly || score < 100}
-              >
-                Submit
-              </Button>
-            )}
           </Space>
         </Card>
 
@@ -303,6 +262,88 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
           }}>
             {output || 'No output yet'}
           </pre>
+
+          {testResults.length > 0 && (
+            <div style={{ marginTop: 16 }}>
+              <Title level={5}>Test Cases</Title>
+              <Collapse
+                expandIcon={({ isActive }) => (
+                  <CaretRightOutlined rotate={isActive ? 90 : 0} />
+                )}
+                style={{ backgroundColor: '#fff' }}
+              >
+                {testResults.map((test, index) => (
+                  <Panel
+                    header={
+                      <div style={{ display: 'flex', alignItems: 'center', gap: 8 }}>
+                        <span>Test Case {index + 1}</span>
+                        {test.passed ? (
+                          <CheckCircleOutlined style={{ color: '#52c41a' }} />
+                        ) : (
+                          <CloseCircleOutlined style={{ color: '#ff4d4f' }} />
+                        )}
+                      </div>
+                    }
+                    key={index}
+                  >
+                    <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
+                      <div>
+                        <Text strong>Input:</Text>
+                        <pre style={{ 
+                          marginTop: 4,
+                          padding: 8,
+                          backgroundColor: '#f5f5f5',
+                          borderRadius: 4,
+                          overflow: 'auto'
+                        }}>
+                          {test.input}
+                        </pre>
+                      </div>
+                      <div>
+                        <Text strong>Expected Output:</Text>
+                        <pre style={{ 
+                          marginTop: 4,
+                          padding: 8,
+                          backgroundColor: '#f5f5f5',
+                          borderRadius: 4,
+                          overflow: 'auto'
+                        }}>
+                          {test.output}
+                        </pre>
+                      </div>
+                      <div>
+                        <Text strong>Actual Output:</Text>
+                        <pre style={{ 
+                          marginTop: 4,
+                          padding: 8,
+                          backgroundColor: '#f5f5f5',
+                          borderRadius: 4,
+                          overflow: 'auto'
+                        }}>
+                          {test.actualOutput}
+                        </pre>
+                      </div>
+                      {test.error && (
+                        <div>
+                          <Text strong style={{ color: '#ff4d4f' }}>Error:</Text>
+                          <pre style={{ 
+                            marginTop: 4,
+                            padding: 8,
+                            backgroundColor: '#fff1f0',
+                            borderRadius: 4,
+                            overflow: 'auto',
+                            color: '#ff4d4f'
+                          }}>
+                            {test.error}
+                          </pre>
+                        </div>
+                      )}
+                    </div>
+                  </Panel>
+                ))}
+              </Collapse>
+            </div>
+          )}
         </Card>
       </Space>
     </div>
