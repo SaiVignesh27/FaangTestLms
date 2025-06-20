@@ -221,12 +221,6 @@ We welcome contributions for new features, bug fixes, documentation, and more!
 
 ---
 
-## 📜 License
-
-This project is licensed under the MIT License. See the [LICENSE](LICENSE) file for details.
-
----
-
 ## 🙏 Acknowledgements
 - Inspired by modern LMS platforms and open-source education tools
-- Built with ❤️ by FaangTechLabs and contributors
+- Built with ❤️ by Sai Vignesh and FaangTechLab
