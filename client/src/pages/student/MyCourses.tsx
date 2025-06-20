@@ -1,7 +1,7 @@
 import React from 'react';
 import { useQuery } from '@tanstack/react-query';
 import StudentLayout from '@/components/layout/StudentLayout';
-import { Course, Class, Test, Assignment } from '@shared/schema';
+import { Course, Class, Test, Assignment, Result } from '@shared/schema';
 import { useAuth } from '@/providers/AuthProvider';
 import { Link, useParams } from 'wouter';
 
@@ -98,9 +98,17 @@ export default function MyCourses() {
     queryKey: ['/api/student/progress'],
   });
 
+  // Fetch test and assignment results
+  const { data: testResults, isLoading: isLoadingTestResults } = useQuery<Result[]>({
+    queryKey: ['/api/student/results/tests'],
+  });
+  const { data: assignmentResults, isLoading: isLoadingAssignmentResults } = useQuery<Result[]>({
+    queryKey: ['/api/student/results/assignments'],
+  });
+
   // Calculate course-specific progress
   const calculateCourseProgress = React.useCallback((courseId: string) => {
-    if (!tests || !assignments) return {
+    if (!tests || !assignments || !testResults || !assignmentResults) return {
       completedTests: 0,
       totalTests: 0,
       completedAssignments: 0,
@@ -109,12 +117,12 @@ export default function MyCourses() {
 
     // Filter tests for this course
     const courseTests = tests.filter(test => test.courseId === courseId);
-    const completedTests = courseTests.filter(test => test.status === 'completed').length;
+    const completedTests = courseTests.filter(test => testResults.some(r => r.testId === test._id)).length;
     const totalTests = courseTests.length;
 
     // Filter assignments for this course
     const courseAssignments = assignments.filter(assignment => assignment.courseId === courseId);
-    const completedAssignments = courseAssignments.filter(assignment => assignment.status === 'completed').length;
+    const completedAssignments = courseAssignments.filter(assignment => assignmentResults.some(r => r.assignmentId === assignment._id)).length;
     const totalAssignments = courseAssignments.length;
 
     return {
@@ -123,7 +131,7 @@ export default function MyCourses() {
       completedAssignments,
       totalAssignments
     };
-  }, [tests, assignments]);
+  }, [tests, assignments, testResults, assignmentResults]);
 
   // Process courses with progress data
   const coursesWithProgress = React.useMemo(() => {
@@ -191,7 +199,7 @@ export default function MyCourses() {
     return 0;
   };
 
-  const isLoading = isLoadingCourses || isLoadingClasses || isLoadingTests || isLoadingAssignments || isLoadingProgress;
+  const isLoading = isLoadingCourses || isLoadingClasses || isLoadingTests || isLoadingAssignments || isLoadingProgress || isLoadingTestResults || isLoadingAssignmentResults;
 
   return (
     <StudentLayout>
