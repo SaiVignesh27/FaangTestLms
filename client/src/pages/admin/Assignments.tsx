@@ -998,7 +998,7 @@ export default function Assignments() {
                       )}
                     />
                   </div>
-                  <FormField
+                  {/* <FormField
                     control={form.control}
                     name="allowFileUpload"
                     render={({ field }) => (
@@ -1018,7 +1018,7 @@ export default function Assignments() {
                         </div>
                       </FormItem>
                     )}
-                  />
+                  /> */}
                 </TabsContent>
 
                 <TabsContent value="questions" className="space-y-6 pt-4">
@@ -1155,7 +1155,7 @@ export default function Assignments() {
                                         type="number" 
                                         min="1" 
                                         {...field} 
-                                        onChange={(e) => field.onChange(parseInt(e.target.value) || 1)}
+                                        onChange={(e) => field.onChange(parseInt(e.target.value))}
                                         className="focus-visible:ring-blue-500 transition-colors duration-200"
                                       />
                                     </FormControl>

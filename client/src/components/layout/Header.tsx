@@ -36,7 +36,7 @@ export default function Header() {
       return 'Student Portal';
     }
     
-    return 'CodeGym LMS';
+    return 'Faang Tech Lab LMS';
   };
 
   // Get user initials for avatar

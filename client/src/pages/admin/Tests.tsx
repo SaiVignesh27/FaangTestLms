@@ -452,7 +452,7 @@ export default function Tests() {
                       </SelectTrigger>
                     </FormControl>
                     <SelectContent>
-                      {form.watch(`questions.${index}.options`)?.map((option, i) => (
+                      {form.watch(`questions.${index}.options`)?.filter(opt => opt !== '').map((option, i) => (
                         <SelectItem key={i} value={option}>
                           {option}
                         </SelectItem>
@@ -944,8 +944,8 @@ public class Main {
                               type="number" 
                               min="1" 
                               {...field} 
-                              onChange={(e) => field.onChange(parseInt(e.target.value) || 30)}
-                              value={field.value || 30}
+                              onChange={(e) => field.onChange(parseInt(e.target.value))}
+                              value={field.value}
                               className="focus-visible:ring-blue-500 transition-colors duration-200"
                             />
                           </FormControl>

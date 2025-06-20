@@ -6,11 +6,11 @@ export default function MainPage() {
   return (
     <div className="h-screen flex flex-col bg-gradient-to-br from-indigo-50 via-white to-blue-100">
       {/* Header */}
-      <header className="py-3 px-4 shadow-sm bg-white">
+      <header className="py-3 px-4  bg-transparent">
         <div className="flex items-center justify-between max-w-6xl mx-auto">
           <div className="flex items-center space-x-2">
-            <img src={logo} alt="CodeGym Logo" className="w-8 h-8 rounded-full" />
-            <span className="text-lg font-bold text-indigo-600">CodeGym</span>
+            <img src={logo} alt="FaangTechLab Logo" className="w-16 h-16 rounded-full" />
+            {/* <span className="text-lg font-bold text-indigo-600">FaangTechLab</span> */}
           </div>
           <div className="flex space-x-3 items-center">
             <Link
@@ -37,7 +37,7 @@ export default function MainPage() {
             <h1 className="text-4xl md:text-5xl font-bold text-gray-900 leading-tight">
               Master Coding with{" "}
               <span className="text-transparent bg-clip-text bg-gradient-to-r from-indigo-600 to-blue-600">
-                CodeGym
+                Faang Tech Lab
               </span>
             </h1>
             <p className="text-lg md:text-xl text-gray-600">
@@ -90,7 +90,7 @@ export default function MainPage() {
 
       {/* Footer */}
       <footer className="py-2 text-center text-gray-500 text-xs bg-white shadow-inner">
-        © 2024 CodeGym by FAANG Tech Lab. All rights reserved.
+        © 2024 FAANG Tech Lab. All rights reserved.
       </footer>
 
       {/* Custom Animation */}

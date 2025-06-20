@@ -302,7 +302,7 @@ export default function Assignments() {
                         <div className="flex items-center">
                           <Star className="h-4 w-4 mr-1 text-yellow-500" fill="currentColor" />
                           <span className="text-gray-500 dark:text-gray-400">
-                            {assignment.points || 0} points
+                            {assignment.questions.reduce((sum, q) => sum + (q.points || 0), 0)} points
                           </span>
                         </div>
                       </div>
@@ -343,7 +343,7 @@ export default function Assignments() {
                   if (assignment.questions && assignment.result && Array.isArray(assignment.result.answers)) {
                     maxScore = assignment.questions.reduce((sum, q) => sum + (q.points || 0), 0);
                     totalScore = assignment.questions.reduce((sum, q, idx) => {
-                      const answer = assignment.result.answers.find((a) => a.questionId === (q._id || idx.toString()));
+                      const answer = assignment.result?.answers.find((a) => a.questionId === (q._id || idx.toString()));
                       return sum + (answer && answer.isCorrect ? (q.points || 0) : 0);
                     }, 0);
                   }

@@ -52,7 +52,7 @@ export default function AdminLogin() {
     onSuccess: () => {
       toast({
         title: 'Login successful',
-        description: 'Welcome to the CodeGym admin portal',
+        description: 'Welcome to the Faang Tech Lab admin portal',
       });
       navigate('/admin/dashboard');
     },

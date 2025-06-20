@@ -1552,6 +1552,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           testId: result.testId,
           assignmentId: result.assignmentId,
           score: result.score || 0, // Include 0 scores
+          maxScore: result.maxScore || 0,
           completedAt: result.submittedAt,
           timeSpent: result.timeSpent || 0 // Add timeSpent from result
         };
@@ -1931,6 +1932,7 @@ export async function registerRoutes(app: Express): Promise<Server> {
           testId: result.testId,
           assignmentId: result.assignmentId,
           score: result.score || 0, // Include 0 scores
+          maxScore: result.maxScore || 0,
           completedAt: result.submittedAt,
           timeSpent: result.timeSpent || 0 // Add timeSpent from result
         };
@@ -2240,104 +2242,36 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Process answers and execute code if needed
-      const processedAnswers = await Promise.all(answers.map(async (answer: any, index: number) => {
-        const question = test.questions[index];
-        
-        // For code questions
-        if (question.type === 'code') {
-          let answerValue = typeof answer === 'string' ? JSON.parse(answer) : answer;
-          if (!answerValue || typeof answerValue !== 'object') {
-            answerValue = {};
-          }
-          // If testResults are present, use them for scoring
-          if (answerValue && Array.isArray(answerValue.testResults)) {
-            const testResults = answerValue.testResults;
-            const testCasesPassed = answerValue.testCasesPassed ?? testResults.filter((t: any) => t.passed).length;
-            const testCasesTotal = answerValue.testCasesTotal ?? testResults.length;
-            const points = answerValue.points ?? (testCasesTotal > 0 ? (testCasesPassed / testCasesTotal) * (question.points || 1) : 0);
-            const isCorrect = testCasesPassed === testCasesTotal && testCasesTotal > 0;
-            return {
-              questionId: question._id?.toString() || index.toString(),
-              answer: answerValue,
-              isCorrect,
-              points,
-              feedback: `Passed ${testCasesPassed} of ${testCasesTotal} test cases`,
-              correctAnswer: question.correctAnswer
-            };
-          }
-          // Fallback: old logic if testResults missing
-          const { code, output } = answerValue;
-          const isCorrect = output && output.trim() === String(question.correctAnswer).trim();
-          return {
-            questionId: question._id?.toString() || index.toString(),
-            answer: answerValue,
-            isCorrect,
-            points: isCorrect ? question.points : 0,
-            feedback: isCorrect ? "Correct output" : `Incorrect output. Expected: ${question.correctAnswer}`,
-            correctAnswer: question.correctAnswer
-          };
-        }
-        
-        // For non-code questions
-        const answerValue = answer.answer || answer;
-        let isCorrect = false;
+      const processedAnswers = answers;
 
-        if (question.type === 'fill') {
-          // For fill-in-blank, do case-insensitive comparison and trim whitespace
-          const studentAnswer = String(answerValue).toLowerCase().trim();
-          const correctAnswer = String(question.correctAnswer).toLowerCase().trim();
-          isCorrect = studentAnswer === correctAnswer;
-          
-          console.log('Fill-in-blank submission:', {
-            studentAnswer,
-            correctAnswer,
-            isCorrect,
-            rawStudentAnswer: answerValue,
-            rawCorrectAnswer: question.correctAnswer
-          });
-        } else if (question.type === 'mcq') {
-          // For MCQ, do exact comparison
-          isCorrect = question.correctAnswer === answerValue;
-        }
+      // Use frontend-calculated score and maxScore
+      const { score, maxScore } = req.body;
 
-        return {
-          questionId: index.toString(),
-          answer: answerValue,
-          isCorrect,
-          points: isCorrect ? question.points : 0,
-          feedback: isCorrect 
-            ? "Correct answer" 
-            : `Incorrect. Correct answer: ${question.correctAnswer}`,
-          correctAnswer: question.correctAnswer
-        };
-      }));
-
-      // Calculate total score
-      const totalScore = processedAnswers.reduce((sum, answer) => sum + (answer.isCorrect ? (answer.points || 0) : 0), 0);
-
-      // Save submission
-      const submission = new TestSubmission({
+      // Save submission (unified with assignment logic)
+      const resultData = {
         testId,
-        userId,
+        studentId: userId,
+        type: 'test' as const,
+        status: 'completed' as const,
+        courseId: test.courseId,
+        title: test.title,
+        studentName: (req as any).user.name,
         answers: processedAnswers,
-        score: totalScore,
-        maxScore: test.questions.reduce((sum: number, q: any) => sum + q.points, 0),
-        results: processedAnswers.map(answer => ({
-          questionId: answer.questionId,
-          questionText: test.questions[parseInt(answer.questionId)].text,
-          correctAnswer: answer.correctAnswer,
-          userAnswer: answer.answer,
-          isCorrect: answer.isCorrect,
-          points: answer.points
-        }))
-      });
-      await submission.save();
+        score, // Use frontend-calculated score
+        scoreRaw: undefined, // Optionally remove or set to undefined
+        maxScore, // Use frontend-calculated maxScore
+        timeSpent: undefined,
+        submittedAt: new Date()
+      };
+
+      const submission = await mongoStorage.createResult(resultData);
 
       res.json({
         submission,
         results: processedAnswers,
-        score: totalScore,
-        maxScore: test.questions.reduce((sum: number, q: any) => sum + q.points, 0)
+        score: score,
+        scoreRaw: undefined,
+        maxScore
       });
     } catch (error) {
       console.error('Error submitting test:', error);
@@ -2380,88 +2314,15 @@ export async function registerRoutes(app: Express): Promise<Server> {
       }
 
       // Process answers
-      const processedAnswers = await Promise.all(assignment.questions.map(async (question, index) => {
-        const answerRaw = answers[index.toString()];
-        let answerValue = answerRaw;
-        if (question.type === 'code') {
-          answerValue = typeof answerRaw === 'string' ? JSON.parse(answerRaw) : answerRaw;
-          if (!answerValue || typeof answerValue !== 'object') {
-            answerValue = {};
-          }
-          // If testResults are present, use them for scoring
-          if (answerValue && Array.isArray(answerValue.testResults)) {
-            const testResults = answerValue.testResults;
-            const testCasesPassed = answerValue.testCasesPassed ?? testResults.filter((t: any) => t.passed).length;
-            const testCasesTotal = answerValue.testCasesTotal ?? testResults.length;
-            const points = answerValue.points ?? (testCasesTotal > 0 ? (testCasesPassed / testCasesTotal) * (question.points || 1) : 0);
-            const isCorrect = testCasesPassed === testCasesTotal && testCasesTotal > 0;
-            return {
-              questionId: question._id?.toString() || index.toString(),
-              answer: answerValue,
-              isCorrect,
-              points,
-              feedback: `Passed ${testCasesPassed} of ${testCasesTotal} test cases`,
-              correctAnswer: question.correctAnswer
-            };
-          }
-          // Fallback: old logic if testResults missing
-          const { code, output } = answerValue;
-          const isCorrect = output && output.trim() === String(question.correctAnswer).trim();
-          return {
-            questionId: question._id?.toString() || index.toString(),
-            answer: answerValue,
-            isCorrect,
-            points: isCorrect ? question.points : 0,
-            feedback: isCorrect ? "Correct output" : `Incorrect output. Expected: ${question.correctAnswer}`,
-            correctAnswer: question.correctAnswer
-          };
-        }
-        // For non-code questions
-        if (question.type === 'mcq') {
-          answerValue = answerRaw?.selectedOption || answerRaw || '';
-        } else if (question.type === 'fill') {
-          answerValue = answerRaw?.answer || answerRaw || '';
-        }
-        let isCorrect = false;
-        if (question.type === 'fill') {
-          const studentAnswer = String(answerValue).toLowerCase().trim();
-          const correctAnswer = String(question.correctAnswer).toLowerCase().trim();
-          isCorrect = studentAnswer === correctAnswer;
-          console.log('Fill-in-blank validation:', {
-            studentAnswer,
-            correctAnswer,
-            isCorrect
-          });
-        } else if (question.type === 'mcq') {
-          isCorrect = question.correctAnswer === answerValue;
-          console.log('MCQ validation:', {
-            studentAnswer: answerValue,
-            correctAnswer: question.correctAnswer,
-            isCorrect
-          });
-        }
-        return {
-          questionId: index.toString(),
-          answer: answerValue,
-          isCorrect,
-          points: isCorrect ? question.points : 0,
-          feedback: isCorrect 
-            ? "Correct answer" 
-            : `Incorrect. Correct answer: ${question.correctAnswer}`,
-          correctAnswer: question.correctAnswer
-        };
-      }));
+      const processedAnswers = answers;
 
-      // Calculate total score and percentage
-      const totalScore = processedAnswers.reduce((sum, answer) => sum + (answer.isCorrect ? (answer.points || 0) : 0), 0);
-      const maxScore = assignment.questions.reduce((sum: number, q: any) => sum + q.points, 0);
-      const scorePercentage = Math.round((totalScore / maxScore) * 100);
+      // Use frontend-calculated score and maxScore
+      const { score, maxScore } = req.body;
 
       console.log('Creating submission result:', {
         assignmentId,
         studentId: userId,
-        score: totalScore,
-        scorePercentage,
+        score: score,
         maxScore,
         answersCount: processedAnswers.length,
         processedAnswers,
@@ -2478,8 +2339,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
         title: assignment.title,
         studentName: (req as any).user.name,
         answers: processedAnswers,
-        score: totalScore,
-        scorePercentage,
+        score: score, // Store percentage as score
+        scoreRaw: score,   // Store raw points as scoreRaw
         maxScore,
         timeSpent: timeSpent || null,
         submittedAt: new Date()
@@ -2492,8 +2353,8 @@ export async function registerRoutes(app: Express): Promise<Server> {
       res.json({
         submission,
         results: processedAnswers,
-        score: totalScore,
-        scorePercentage,
+        score: score,
+        scoreRaw: score,
         maxScore,
         timeSpent: timeSpent || null
       });

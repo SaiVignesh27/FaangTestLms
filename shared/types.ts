@@ -57,6 +57,7 @@ export interface LeaderboardEntry {
   studentId: string;
   studentName: string;
   score: number;
+  maxScore?: number;
   courseId?: string;
   testId?: string;
   assignmentId?: string;
@@ -112,4 +113,13 @@ export interface Test {
     startTime: string;
     endTime: string;
   };
+}
+
+export interface Assignment {
+  _id: string;
+  title: string;
+  courseTitle: string;
+  courseId: string;
+  dueDate: Date;
+  status?: string;
 }

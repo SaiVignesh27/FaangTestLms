@@ -292,9 +292,29 @@ export default function Leaderboard() {
                           <div className="flex flex-col items-end">
                             <div className="flex items-center">
                               <Star className="h-4 w-4 text-yellow-500 mr-1" fill="currentColor" />
-                              <span className="font-bold text-lg">{entry.score}%</span>
+                              {(() => {
+                                let percent = 0;
+                                if (typeof entry.score === 'number' && entry.score <= 100) {
+                                  percent = entry.score;
+                                } else if (entry.maxScore && entry.maxScore > 0) {
+                                  percent = Math.round((entry.score / entry.maxScore) * 100);
+                                }
+                                return (
+                                  <span className="font-bold text-lg">{percent}%</span>
+                                );
+                              })()}
                             </div>
-                            <Progress value={entry.score} className="w-24 h-1 mt-1" />
+                            {(() => {
+                              let percent = 0;
+                              if (typeof entry.score === 'number' && entry.score <= 100) {
+                                percent = entry.score;
+                              } else if (entry.maxScore && entry.maxScore > 0) {
+                                percent = Math.round((entry.score / entry.maxScore) * 100);
+                              }
+                              return (
+                                <Progress value={percent} className="w-24 h-1 mt-1" />
+                              );
+                            })()}
                           </div>
                         </TableCell>
                         <TableCell className="text-right">

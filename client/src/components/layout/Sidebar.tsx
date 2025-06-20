@@ -80,7 +80,7 @@ export default function Sidebar() {
             <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary text-white">
               <Code className="w-4 h-4" />
             </div>
-            <span className="text-lg font-semibold text-[var(--text-primary)]">CodeGym</span>
+            <span className="text-lg font-semibold text-[var(--text-primary)]">Faang Tech Lab </span>
           </a>
         </Link>
         <button 

@@ -53,7 +53,7 @@
 //     onSuccess: () => {
 //       toast({
 //         title: 'Login successful',
-//         description: 'Welcome to CodeGym',
+//         description: 'Welcome to Faang Tech Lab',
 //       });
 //       navigate('/student/dashboard');
 //     },
@@ -307,7 +307,7 @@ export default function StudentLogin() {
     onSuccess: () => {
       toast({
         title: 'Login successful',
-        description: 'Welcome to CodeGym',
+        description: 'Welcome to Faang Tech Lab',
       });
       navigate('/student/dashboard');
     },

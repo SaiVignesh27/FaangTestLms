@@ -337,7 +337,7 @@ export default function AssignmentResults() {
                             <li 
                               key={optIndex} 
                               className={`p-3 rounded-lg transition-all duration-300 ${
-                                option === answer?.answer 
+                                option === (typeof answer?.answer === 'string' ? answer.answer : '')
                                   ? (isCorrect 
                                       ? 'bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800' 
                                       : 'bg-red-100 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800')
@@ -348,7 +348,7 @@ export default function AssignmentResults() {
                             >
                               <div className="flex items-center justify-between">
                                 <span className={`
-                                  ${option === answer?.answer 
+                                  ${option === (typeof answer?.answer === 'string' ? answer.answer : '')
                                     ? (isCorrect ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300')
                                     : (question.correctAnswer === option && !isCorrect ? 'text-green-700 dark:text-green-300' : '')
                                   }
@@ -356,7 +356,7 @@ export default function AssignmentResults() {
                                   {option}
                                 </span>
                                 <div className="flex items-center gap-2">
-                                  {option === answer?.answer && (
+                                  {option === (typeof answer?.answer === 'string' ? answer.answer : '') && (
                                     <span className={`text-sm ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
                                       {isCorrect ? '✓ Your Answer' : '✗ Your Answer'}
                                     </span>
@@ -380,7 +380,11 @@ export default function AssignmentResults() {
                             : 'bg-red-100 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800'
                         }`}>
                            <p className="font-medium mb-2">Your Answer:</p>
-                          <p className="text-gray-700 dark:text-gray-300">{answer?.answer || "No answer provided"}</p>
+                          <p className="text-gray-700 dark:text-gray-300">{
+                            typeof answer?.answer === 'string'
+                              ? answer.answer
+                              : (answer?.answer ? JSON.stringify(answer.answer) : "No answer provided")
+                          }</p>
                          </div>
                         <div className="p-4 rounded-lg bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800">
                              <p className="font-medium mb-2">Correct Answer:</p>

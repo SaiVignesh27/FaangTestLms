@@ -188,7 +188,7 @@ export default function Leaderboard() {
     const url = URL.createObjectURL(blob);
     const link = document.createElement('a');
     link.setAttribute('href', url);
-    link.setAttribute('download', `codegym-leaderboard-${contentType}-${dateStr}-${timeStr}.csv`);
+    link.setAttribute('download', `FaangTechLab-leaderboard-${contentType}-${dateStr}-${timeStr}.csv`);
     document.body.appendChild(link);
     link.click();
     document.body.removeChild(link);
