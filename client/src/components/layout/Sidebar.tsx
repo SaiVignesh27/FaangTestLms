@@ -175,12 +175,12 @@ export default function Sidebar() {
                 label="Dashboard" 
                 isActive={isActive("/student/dashboard")} 
               />
-              <NavItem 
+              {/* <NavItem 
                 href="/student/courses" 
                 icon={<School />}
                 label="My Courses" 
                 isActive={isActive("/student/courses")} 
-              />
+              /> */} {/* Hidden for students */}
               <NavItem 
                 href="/student/daily-tests" 
                 icon={<FileQuestion />}

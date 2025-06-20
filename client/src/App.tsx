@@ -86,10 +86,10 @@ function Router() {
 
       {/* Student Routes */}
       <Route path="/student/dashboard" component={StudentDashboard} />
-      <Route path="/student/courses" component={StudentCourses} />
-      <Route path="/student/courses/:id" component={CourseDetail} />
-      <Route path="/student/classes/:id" component={ClassView} />
-      <Route path="/student/daily-tests" component={StudentDailyTests} />
+      {/* <Route path="/student/courses" component={StudentCourses} /> */} {/* Hidden for students */}
+      {/* <Route path="/student/courses/:id" component={CourseDetail} /> */} {/* Hidden for students */}
+      {/* <Route path="/student/classes/:id" component={ClassView} /> */} {/* Hidden for students */}
+      <Route path="/student/daily-tests" component={StudentDailyTests} /> {/* Hidden for students */}
       <Route path="/student/tests/:id" component={TestView} />
       <Route path="/student/tests/:id/results" component={TestResults} />
       <Route path="/student/assignments/:id" component={AssignmentView} />
