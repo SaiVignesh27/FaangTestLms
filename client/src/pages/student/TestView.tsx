@@ -88,7 +88,8 @@ export default function TestView() {
       if (!test || !user) throw new Error('Test or user not found');
 
       const questionResults = test.questions.map((question, index) => {
-        const studentAnswer = answers[question._id || index.toString()];
+        const answerKey = `q${index}`;
+        const studentAnswer = answers[answerKey];
         const correctAnswer = question.correctAnswer;
         let isCorrect = false;
         let feedback = '';
@@ -117,7 +118,7 @@ export default function TestView() {
               const isCorrect = testCasesPassed === testCasesTotal && testCasesTotal > 0;
               feedback = `Passed ${testCasesPassed} of ${testCasesTotal} test cases`;
               return {
-                questionId: question._id || index.toString(),
+                questionId: answerKey,
                 answer: JSON.stringify({ ...parsedAnswer, testCasesPassed, testCasesTotal, points }),
                 isCorrect,
                 points,
@@ -133,7 +134,7 @@ export default function TestView() {
             const isCorrect = outputStr === correctAnswerStr;
             feedback = isCorrect ? 'Correct output' : `Incorrect output. Expected: ${correctAnswer}`;
             return {
-              questionId: question._id || index.toString(),
+              questionId: answerKey,
               answer: JSON.stringify({ code, output }),
               isCorrect,
               points: isCorrect ? (question.points || 1) : 0,
@@ -143,7 +144,7 @@ export default function TestView() {
           } catch {
             feedback = 'Invalid code answer format';
             return {
-              questionId: question._id || index.toString(),
+              questionId: answerKey,
               answer: studentAnswer,
               isCorrect: false,
               points: 0,
@@ -154,7 +155,7 @@ export default function TestView() {
         }
 
         return {
-          questionId: question._id || index.toString(),
+          questionId: answerKey,
           answer: processedAnswer,
           isCorrect,
           points: isCorrect ? (question.points || 1) : 0,
@@ -163,8 +164,22 @@ export default function TestView() {
         };
       });
 
-      const total = questionResults.reduce((sum, q) => sum + q.points, 0);
-      const max = test.questions.reduce((sum, q) => sum + (q.points || 1), 0);
+      // Calculate score using the same logic as TestResults page
+      let totalScore = 0;
+      let maxScore = 0;
+      if (test?.questions) {
+        maxScore = test.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+        totalScore = test.questions.reduce((sum, q, idx) => {
+          const answer = questionResults.find((a) => a.questionId === `q${idx}`);
+          return sum + (answer && answer.isCorrect ? (q.points || 0) : 0);
+        }, 0);
+      }
+      let scorePercentage = 0;
+      if (maxScore > 0) {
+        scorePercentage = Math.round((totalScore / maxScore) * 100);
+        if (scorePercentage > 100) scorePercentage = 100;
+        if (scorePercentage < 0) scorePercentage = 0;
+      }
 
       return apiRequest('POST', '/api/student/results', {
         studentId: user._id,
@@ -173,8 +188,8 @@ export default function TestView() {
         type: 'test',
         answers: questionResults,
         status: 'completed',
-        score: Math.round((total / max) * 100),
-        maxScore: max,
+        score: scorePercentage,
+        maxScore: maxScore,
         submittedAt: new Date(),
         studentName: user.name,
         title: test.title,
@@ -205,7 +220,27 @@ export default function TestView() {
     if (isTestSubmitted) setLocation(`/student/tests/${id}/results`);
   }, [isTestSubmitted, id, setLocation]);
 
+  const getSectionQuestions = () => {
+    if (!test?.questions) return [];
+    const allQuestions = test.questions;
+    // Attach original index to each question
+    const numberedQuestions = allQuestions.map((question, index) => ({
+      ...question,
+      questionNumber: index + 1,
+      __originalIndex: index,
+    }));
+    // Then filter by section
+    return numberedQuestions.filter(question => {
+      if (currentSection === 1) {
+        return question.type !== 'code';
+      } else {
+        return question.type === 'code';
+      }
+    });
+  };
+
   const renderQuestion = (question: any, index: number) => {
+    const answerKey = `q${index}`;
     if ((currentSection === 1 && question.type === 'code') || (currentSection === 2 && question.type !== 'code')) return null;
 
     switch (question.type) {
@@ -216,8 +251,8 @@ export default function TestView() {
               {question.text}
             </div>
             <RadioGroup
-              value={answers[question._id || index.toString()] || ''}
-              onValueChange={val => setAnswers((prev: Record<string, string>) => ({ ...prev, [question._id || index.toString()]: val }))}
+              value={answers[answerKey] || ''}
+              onValueChange={val => setAnswers((prev: Record<string, string>) => ({ ...prev, [answerKey]: val }))}
               className="space-y-3"
             >
               {question.options?.map((opt: string, i: number) => (
@@ -248,8 +283,8 @@ export default function TestView() {
               rows={4}
               placeholder="Type your answer here..."
               aria-label="Answer input"
-              value={answers[question._id || index.toString()] || ''}
-              onChange={e => setAnswers((prev: Record<string, string>) => ({ ...prev, [question._id || index.toString()]: e.target.value }))}
+              value={answers[answerKey] || ''}
+              onChange={e => setAnswers((prev: Record<string, string>) => ({ ...prev, [answerKey]: e.target.value }))}
             />
           </div>
         );
@@ -277,7 +312,7 @@ export default function TestView() {
             <div className="bg-white p-6 rounded-xl border border-gray-200 shadow-sm hover:shadow-md transition-all duration-300 hover:scale-[1.01] overflow-x-auto">
               <CodeEditor
                 initialCode={(() => {
-                  const storedAnswer = answers[question._id || index.toString()];
+                  const storedAnswer = answers[answerKey];
                   if (storedAnswer) {
                     try {
                       const parsed = JSON.parse(storedAnswer);
@@ -293,8 +328,8 @@ export default function TestView() {
                 question={question}
                 description={question.description}
                 testId={id}
-                questionId={question._id || index.toString()}
-                onAnswerChange={(answer) => handleCodeAnswerChange(question._id || index.toString(), answer)}
+                questionId={answerKey}
+                onAnswerChange={(answer) => handleCodeAnswerChange(answerKey, answer)}
               />
             </div>
           </div>
@@ -361,23 +396,29 @@ export default function TestView() {
         </div>
 
         <div className="mt-8 space-y-8">
-          {test?.questions.map((q, i) => (
-            ((currentSection === 1 && q.type !== 'code') || (currentSection === 2 && q.type === 'code')) ? (
-              <Card key={i} className="mb-4 transition-all duration-300 hover:shadow-xl border-gray-200 animate-fadeIn">
+          {getSectionQuestions().map((question, idx) => {
+            const originalIndex = question.__originalIndex;
+            if (typeof originalIndex !== 'number') {
+              console.error('Question missing __originalIndex:', question);
+              return null;
+            }
+            // WARNING: Using array index as answer key is fragile! If questions are reordered, added, or removed, answer mapping will break.
+            return (
+              <Card key={originalIndex} className="mb-4 transition-all duration-300 hover:shadow-xl border-gray-200 animate-fadeIn">
                 <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
                   <CardTitle className="text-lg font-semibold flex items-center gap-2">
                     <span className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-700 rounded-full text-sm animate-bounce">
-                      {i + 1}
+                      {question.questionNumber}
                     </span>
-                    Question {i + 1}
+                    Question {question.questionNumber}
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="pt-8">
-                  {renderQuestion(q, i)}
+                  {renderQuestion(question, originalIndex)}
                 </CardContent>
               </Card>
-            ) : null
-          ))}
+            );
+          })}
         </div>
 
         {currentSection === 2 && validationError && (

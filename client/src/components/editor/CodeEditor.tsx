@@ -149,12 +149,18 @@ const CodeEditor: React.FC<CodeEditorProps> = ({
     setResult(null);
     setError(null);
 
+    // If questionId is in the form 'q{number}', strip the 'q' prefix for backend
+    let backendQuestionId = questionId;
+    if (typeof questionId === 'string' && questionId.startsWith('q')) {
+      backendQuestionId = questionId.slice(1);
+    }
+
     try {
       const response = await apiRequest('POST', '/api/compile/test', {
         code,
         languageId: getLanguageId(selectedLanguage),
         testId,
-        questionId
+        questionId: backendQuestionId
       });
 
       const data = await response.json();

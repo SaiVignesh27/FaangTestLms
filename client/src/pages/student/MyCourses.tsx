@@ -113,7 +113,7 @@ export default function MyCourses() {
     const totalTests = courseTests.length;
 
     // Filter assignments for this course
-    const courseAssignments = assignments.filter(assignment => assignment.courseTitle === courseId);
+    const courseAssignments = assignments.filter(assignment => assignment.courseId === courseId);
     const completedAssignments = courseAssignments.filter(assignment => assignment.status === 'completed').length;
     const totalAssignments = courseAssignments.length;
 

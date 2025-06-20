@@ -86,7 +86,7 @@ export default function TestResults() {
   if (test?.questions) {
     maxScore = test.questions.reduce((sum, q) => sum + (q.points || 0), 0);
     totalScore = test.questions.reduce((sum, q, idx) => {
-      const answer = answersArr.find((a) => a.questionId === (q._id || idx.toString()));
+      const answer = answersArr.find((a) => a.questionId === `q${idx}`);
       return sum + (answer && answer.isCorrect ? (q.points || 0) : 0);
     }, 0);
   }
@@ -261,7 +261,7 @@ export default function TestResults() {
           {test?.questions?.map((question: any, index: number) => {
             const answer = Array.isArray(result.answers)
               ? result.answers.find(
-                  (a: Answer) => a.questionId === (question._id || index.toString()),
+                  (a: Answer) => a.questionId === `q${index}`,
                 )
               : null;
             const isCorrect = answer?.isCorrect;
