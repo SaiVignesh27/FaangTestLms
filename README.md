@@ -105,6 +105,28 @@ Faang-LMS/
 
 ---
 
+## ⚠️ Configuration Notes
+
+### Judge0 Code Execution Service
+- By default, Judge0 (the code execution engine) is expected to run locally on port 3000 (`http://localhost:3000`).
+- If you want to use a different port or a deployed Judge0 instance, you must update the URL in **two places**:
+  - `server/judge0.ts`:
+    - Line 33: `'http://localhost:3000/submissions?base64_encoded=true&wait=false'`
+    - Line 58: ``http://localhost:3000/submissions/${token}?base64_encoded=true&fields=*``
+- Change both occurrences to your desired Judge0 endpoint (e.g., `https://your-judge0-instance.com`).
+
+### Changing Backend URL for Frontend
+- The frontend communicates with the backend using `http://localhost:5000` by default.
+- To change this (e.g., for deployment), update the following lines in `client/src/lib/queryClient.ts`:
+  - Line 31: `fetch(`http://localhost:5000${endpoint}`)`
+  - Line 67: `fetch(`http://localhost:5000${queryKey[0]}`)`
+- Replace `http://localhost:5000` with your deployed backend URL.
+
+### Changing Frontend URL
+- If you need to reference the frontend URL (e.g., for OAuth, CORS, or environment variables), update your deployment environment or config files accordingly.
+
+---
+
 ## ☁️ Deployment
 
 ### Vercel (Recommended)
@@ -145,6 +167,57 @@ Faang-LMS/
 5. Open a Pull Request
 
 We welcome contributions for new features, bug fixes, documentation, and more!
+
+---
+
+## 👩‍💻 Developer Notes & Best Practices
+
+### Project Structure & Conventions
+- **Separation of Concerns:**
+  - `client/` contains all frontend code (React, UI, pages, components, hooks, contexts, etc.)
+  - `server/` contains backend logic (Express routes, models, database, Judge0 integration)
+  - `shared/` contains types and schemas (Zod) used by both frontend and backend for consistency
+- **Adding New Features:**
+  - **Frontend:**
+    - Add new pages in `client/src/pages/`
+    - Add reusable UI in `client/src/components/`
+    - Use hooks/context for state management in `client/src/hooks/` and `client/src/contexts/`
+  - **Backend:**
+    - Add new API endpoints in `server/routes.ts`
+    - Add/modify database models in `server/models.ts` or `shared/schema.ts`
+- **Shared Types:**
+  - Use types and schemas from `shared/schema.ts` to ensure type safety and validation across both client and server.
+
+### API & Data Flow
+- All API endpoints are under `/api/` and defined in `server/routes.ts`.
+- Use `fetch` or React Query in the frontend to call backend APIs (see `client/src/lib/queryClient.ts`).
+- For new API endpoints, document expected request/response formats.
+
+### Testing & Debugging
+- Use browser dev tools and network inspector for frontend debugging.
+- Use console logs and error handling in Express for backend debugging.
+- For code execution, ensure Judge0 is running and accessible at the configured URL.
+
+### Linting, Formatting & Code Quality
+- Use Prettier and ESLint (if configured) to maintain code style and catch errors early.
+- Keep code modular and DRY (Don't Repeat Yourself).
+- Use descriptive commit messages and branch names.
+
+### Contributing & Collaboration
+- Always create a new branch for your feature or bugfix.
+- Open a Pull Request (PR) for review before merging to `main`.
+- Write clear PR descriptions and reference related issues if any.
+- Review code for security, performance, and maintainability.
+
+### Environment & Deployment
+- Use `.env` files for secrets and environment-specific configs (never commit secrets to git).
+- Update Judge0 and backend URLs as described in the Configuration Notes section when deploying.
+- For production, ensure proper CORS, HTTPS, and security settings.
+
+### Additional Tips
+- Read and update this README as the project evolves.
+- Add comments and documentation to your code for clarity.
+- If you add a major feature, consider updating the Features section above.
 
 ---
 
