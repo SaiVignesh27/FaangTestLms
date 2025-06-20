@@ -107,26 +107,24 @@ export default function AssignmentView() {
     return assignment.questions;
   };
 
-  // Get section questions with proper numbering
+  // Get section questions with proper numbering and original index
   const getSectionQuestions = () => {
     if (!assignment?.questions) return [];
-    const allQuestions = getAllQuestions();
-    
-    // First, assign numbers to all questions
+    const allQuestions = assignment.questions;
+    // Attach original index to each question
     const numberedQuestions = allQuestions.map((question, index) => ({
       ...question,
-      questionNumber: index + 1
+      questionNumber: index + 1,
+      __originalIndex: index,
     }));
-
     // Then filter by section
-    return numberedQuestions
-      .filter(question => {
-        if (currentSection === 1) {
-          return question.type === 'mcq' || question.type === 'fill';
-        } else {
-          return question.type === 'code';
-        }
-      });
+    return numberedQuestions.filter(question => {
+      if (currentSection === 1) {
+        return question.type === 'mcq' || question.type === 'fill';
+      } else {
+        return question.type === 'code';
+      }
+    });
   };
 
   // Handler for updating answers from CodeEditor
@@ -163,14 +161,10 @@ export default function AssignmentView() {
   const { toast } = useToast();
 
   const submitAssignment = useMutation({
-    mutationFn: async () => {
-      const timeSpent = Math.floor((Date.now() - startTime) / 1000); // Calculate time spent in seconds
-      const response = await apiRequest('POST', `/api/assignments/${id}/submit`, {
-        answers,
-        timeSpent
-      });
-      const data = await response.json();
-      return data as { submission: Result; results: any[]; score: number; scorePercentage: number; maxScore: number };
+    mutationFn: async (data: { answers: any[]; score: number; maxScore: number; timeSpent: number }) => {
+      const response = await apiRequest('POST', `/api/assignments/${id}/submit`, data);
+      const submission = await response.json();
+      return submission as { submission: Result; results: any[]; score: number; scorePercentage: number; maxScore: number };
     },
     onError: (error: any) => {
       if (error.response?.status === 400 && error.response?.data?.submission) {
@@ -206,10 +200,96 @@ export default function AssignmentView() {
 
   const handleSubmit = async () => {
     if (!assignment) return;
+    // Debug log: print answers state and assignment questions
+    console.log('Answers before submission:', answers);
+    console.log('Assignment questions:', assignment.questions.map((q, i) => ({ id: q._id, idx: i, type: q.type, text: q.text })));
+    // Check for unanswered questions
+    const unanswered = assignment.questions.filter((q, idx) => !answers[`q${idx}`]);
+    if (unanswered.length > 0) {
+      alert(`You have ${unanswered.length} unanswered question(s)! Please answer all questions before submitting.`);
+      setIsSubmitting(false);
+      return;
+    }
     setIsSubmitting(true);
     try {
-      await submitAssignment.mutateAsync();
-      // Exit full screen after submission
+      // Build processed answers array using TestView logic
+      console.log('Answers before submission:', answers);
+      const questionResults = assignment.questions.map((question, index) => {
+        const questionId = question._id || index.toString();
+        const answerKey = `q${index}`;
+        const studentAnswer = answers[answerKey];
+        const correctAnswer = question.correctAnswer;
+        let isCorrect = false;
+        let feedback = '';
+        let processedAnswer: string = '';
+        let correctValue = correctAnswer;
+        let points = 0;
+        if (question.type === 'mcq') {
+          const selectedValue = typeof studentAnswer === 'string' ? studentAnswer : '';
+          const correctIndex = parseInt(correctAnswer.toString());
+          correctValue = question.options?.[correctIndex] || '';
+          isCorrect = selectedValue === correctValue;
+          feedback = isCorrect ? 'Correct' : `Incorrect. Correct answer: ${correctValue}`;
+          processedAnswer = selectedValue;
+          points = isCorrect ? (question.points || 1) : 0;
+        } else if (question.type === 'fill') {
+          const studentStr = typeof studentAnswer === 'string' ? studentAnswer : '';
+          const correctStr = typeof correctAnswer === 'string' ? correctAnswer : '';
+          isCorrect = studentStr.trim().toLowerCase() === correctStr.trim().toLowerCase();
+          feedback = isCorrect ? 'Correct' : `Incorrect. Correct answer: ${correctStr}`;
+          processedAnswer = studentStr;
+          correctValue = correctStr;
+          points = isCorrect ? (question.points || 1) : 0;
+        } else if (question.type === 'code') {
+          let parsedAnswer: any = {};
+          try { parsedAnswer = studentAnswer ? JSON.parse(studentAnswer) : {}; } catch { parsedAnswer = {}; }
+          if (parsedAnswer && Array.isArray(parsedAnswer.testResults)) {
+            const testResults = parsedAnswer.testResults;
+            const testCasesPassed = parsedAnswer.testCasesPassed ?? testResults.filter((t: any) => t.passed).length;
+            const testCasesTotal = parsedAnswer.testCasesTotal ?? testResults.length;
+            points = parsedAnswer.points ?? (testCasesTotal > 0 ? (testCasesPassed / testCasesTotal) * (question.points || 1) : 0);
+            isCorrect = testCasesPassed === testCasesTotal && testCasesTotal > 0;
+            feedback = `Passed ${testCasesPassed} of ${testCasesTotal} test cases`;
+          } else {
+            points = 0;
+            isCorrect = false;
+            feedback = 'No code provided.';
+          }
+          processedAnswer = studentAnswer || '';
+        }
+        return {
+          questionId,
+          answer: processedAnswer,
+          isCorrect,
+          points,
+          feedback,
+          correctAnswer: correctValue
+        };
+      });
+      // Calculate totalScore, maxScore, scorePercentage
+      let totalScore = 0;
+      let maxScore = 0;
+      if (assignment?.questions) {
+        maxScore = assignment.questions.reduce((sum, q) => sum + (q.points || 0), 0);
+        totalScore = assignment.questions.reduce((sum, q, idx) => {
+          const answer = questionResults.find((a) => a.questionId === (q._id || idx.toString()));
+          return sum + (answer && answer.isCorrect ? (q.points || 0) : 0);
+        }, 0);
+      }
+      let scorePercentage = 0;
+      if (maxScore > 0) {
+        scorePercentage = Math.round((totalScore / maxScore) * 100);
+        if (scorePercentage > 100) scorePercentage = 100;
+        if (scorePercentage < 0) scorePercentage = 0;
+      }
+      const timeSpent = Math.floor((Date.now() - startTime) / 1000);
+      // Submit processed answers and score to backend
+      await submitAssignment.mutateAsync({
+        answers: questionResults,
+        score: scorePercentage,
+        maxScore,
+        timeSpent,
+      });
       if (document.fullscreenElement) {
         document.exitFullscreen().catch(err => {
           console.error(`Error attempting to exit full-screen: ${err.message}`);
@@ -225,9 +305,7 @@ export default function AssignmentView() {
 
   // Render question based on type
   const renderQuestion = (question: Question, index: number) => {
-    const questionNumber = question.questionNumber ?? (index + 1);
-    const answerKey = `q${questionNumber}`;
-
+    const answerKey = `q${index}`;
     switch (question.type) {
       case 'mcq':
         return (
@@ -252,9 +330,9 @@ export default function AssignmentView() {
                   key={i} 
                   className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:border-blue-500 transition-all duration-300 cursor-pointer group hover:scale-[1.02] hover:shadow-md"
                 >
-                  <RadioGroupItem value={opt} id={`q${questionNumber}-opt${i}`} className="group-hover:border-blue-500 transition-transform duration-300 group-hover:scale-110" />
+                  <RadioGroupItem value={opt} id={`q${answerKey}-opt${i}`} className="group-hover:border-blue-500 transition-transform duration-300 group-hover:scale-110" />
                   <Label 
-                    htmlFor={`q${questionNumber}-opt${i}`} 
+                    htmlFor={`q${answerKey}-opt${i}`} 
                     className="flex-1 cursor-pointer group-hover:text-blue-600 transition-all duration-300"
                   >
                     {opt}
@@ -329,8 +407,8 @@ export default function AssignmentView() {
                 question={question.text}
                 description={question.description}
                 testId={id}
-                questionId={(questionNumber - 1).toString()}
-                onAnswerChange={(answer) => handleCodeAnswerChange((question._id || index.toString()), answer)}
+                questionId={question._id || index.toString()}
+                onAnswerChange={(answer) => handleCodeAnswerChange(answerKey, answer)}
               />
             </div>
           </div>
@@ -416,7 +494,7 @@ export default function AssignmentView() {
           <div className="w-full bg-gray-200 rounded-full h-3 mt-6 overflow-hidden">
             <div 
               className="bg-gradient-to-r from-blue-500 to-blue-700 h-3 rounded-full transition-all duration-500 ease-in-out animate-gradient-x" 
-              style={{ width: `${((assignment?.questions?.filter(q => answers[(q as Question).questionNumber || 0]).length || 0) / (assignment?.questions?.length || 1)) * 100}%` }}
+              style={{ width: `${((assignment?.questions?.filter((q, idx) => { const k = `q${idx}`; console.log('Question render key:', k); return answers[k]; }).length || 0) / (assignment?.questions?.length || 1)) * 100}%` }}
             />
           </div>
 
@@ -427,12 +505,20 @@ export default function AssignmentView() {
               </CardTitle>
             </CardHeader>
             <CardContent>
-              {getSectionQuestions().map((question, idx) => (
-                <div key={question._id || question.questionNumber || idx} className="mb-6">
-                  <h3 className="font-medium mb-2">Question {question.questionNumber ?? (idx + 1)}</h3>
-                  {renderQuestion(question, idx)}
-                </div>
-              ))}
+              {getSectionQuestions().map((question, idx) => {
+                const originalIndex = question.__originalIndex;
+                if (typeof originalIndex !== 'number') {
+                  console.error('Question missing __originalIndex:', question);
+                  return null;
+                }
+                // WARNING: Using array index as answer key is fragile! If questions are reordered, added, or removed, answer mapping will break.
+                return (
+                  <div key={originalIndex} className="mb-6">
+                    <h3 className="font-medium mb-2">Question {question.questionNumber ?? (originalIndex + 1)}</h3>
+                    {renderQuestion(question, originalIndex)}
+                  </div>
+                );
+              })}
             </CardContent>
           </Card>
         </div>
