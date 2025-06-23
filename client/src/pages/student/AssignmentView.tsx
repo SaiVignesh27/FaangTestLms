@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, Link, useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import StudentLayout from '@/components/layout/StudentLayout';
@@ -14,6 +14,7 @@ import { AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 import CodeEditor from '@/components/editor/CodeEditor';
 import { useToast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 interface Question {
   type: 'mcq' | 'fill' | 'code';
@@ -59,26 +60,13 @@ export default function AssignmentView() {
   const [timeLeft, setTimeLeft] = useState<number | null>(null);
   const [showResults, setShowResults] = useState(false);
   const [results, setResults] = useState<Result | null>(null);
+  const [isFullScreen, setIsFullScreen] = useState(!!document.fullscreenElement);
+  const { toast } = useToast();
+  const reenteringFullScreen = useRef(false);
 
   const { data: assignment, isLoading } = useQuery<Assignment>({
     queryKey: [`/api/student/assignments/${id}`],
   });
-
-  // Enter full screen on component mount
-  useEffect(() => {
-    document.documentElement.requestFullscreen().catch(err => {
-      console.error(`Error attempting to enable full-screen: ${err.message}`);
-    });
-
-    // Exit full screen when component unmounts
-    return () => {
-      if (document.fullscreenElement) {
-        document.exitFullscreen().catch(err => {
-          console.error(`Error attempting to exit full-screen: ${err.message}`);
-        });
-      }
-    };
-  }, []);
 
   // Timer effect
   useEffect(() => {
@@ -100,6 +88,53 @@ export default function AssignmentView() {
     const timer = setInterval(() => setTimeLeft(prev => (prev !== null ? prev - 1 : null)), 1000);
     return () => clearInterval(timer);
   }, [timeLeft]);
+
+  useEffect(() => {
+    const handleFullScreenChange = () => {
+      setIsFullScreen(!!document.fullscreenElement);
+    };
+    document.addEventListener('fullscreenchange', handleFullScreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullScreenChange);
+    };
+  }, []);
+
+  useEffect(() => {
+    // Automatically enter full screen when the assignment starts
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error('Error attempting to enable full-screen:', err.message);
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    // Listen for exiting full screen and force re-enter with warning
+    const handleFullScreenChange = () => {
+      if (!document.fullscreenElement) {
+        toast({
+          title: 'Full Screen Required',
+          description: 'You must stay in full screen mode during the assignment.',
+          variant: 'destructive',
+        });
+        document.documentElement.requestFullscreen().catch((err) => {
+          console.error('Error attempting to re-enable full-screen:', err.message);
+        });
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullScreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullScreenChange);
+    };
+  }, [toast]);
+
+  const handleExitFullScreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch((err) => {
+        console.error('Error attempting to exit full-screen:', err.message);
+      });
+    }
+  };
 
   // Get all questions for proper numbering
   const getAllQuestions = () => {
@@ -158,8 +193,6 @@ export default function AssignmentView() {
     localStorage.setItem(`answers-${id}`, JSON.stringify(answers));
   }, [answers, id]);
 
-  const { toast } = useToast();
-
   const submitAssignment = useMutation({
     mutationFn: async (data: { answers: any[]; score: number; maxScore: number; timeSpent: number }) => {
       const response = await apiRequest('POST', `/api/assignments/${id}/submit`, data);
@@ -187,7 +220,12 @@ export default function AssignmentView() {
       // Clear saved answers and start time
       localStorage.removeItem(`answers-${id}`);
       localStorage.removeItem(`startTime-${id}`);
-      
+      // Exit full screen after submission
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch((err) => {
+          console.error('Error attempting to exit full-screen after submission:', err.message);
+        });
+      }
       // Redirect to results page
       setLocation(`/student/assignments/${id}/results`);
       toast({
@@ -421,7 +459,7 @@ export default function AssignmentView() {
 
   if (isLoading) {
     return (
-      <StudentLayout>
+      <StudentLayout hideSidebarAndHeader={true}>
         <div className="flex justify-center py-8">
           <Loader2 className="h-8 w-8 animate-spin text-primary" />
         </div>
@@ -431,7 +469,7 @@ export default function AssignmentView() {
 
   if (!assignment) {
     return (
-      <StudentLayout>
+      <StudentLayout hideSidebarAndHeader={true}>
         <div className="text-center py-12">
           <h2 className="text-2xl font-bold mb-2">Assignment Not Found</h2>
           <p className="text-gray-600 dark:text-gray-400 mb-6">
@@ -446,7 +484,31 @@ export default function AssignmentView() {
   }
 
   return (
-    <StudentLayout>
+    <StudentLayout hideSidebarAndHeader={true}>
+      {/* Full Screen Enforcement Modal */}
+      <Dialog open={!isFullScreen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Full Screen Required</DialogTitle>
+            <DialogDescription>
+              You must be in full screen mode to continue your assignment. Please click the button below to re-enter full screen.
+            </DialogDescription>
+          </DialogHeader>
+          <Button
+            type="button"
+            onClick={() => {
+              document.documentElement.requestFullscreen().catch((err) => {
+                console.error('Error attempting to enable full-screen:', err.message);
+              });
+            }}
+            className="w-full mt-4 flex items-center gap-2 justify-center"
+            aria-label="Enter Full Screen"
+          >
+            <Maximize2 className="w-5 h-5" />
+            Enter Full Screen
+          </Button>
+        </DialogContent>
+      </Dialog>
       <div className="space-y-6">
         <div className="flex flex-col md:flex-row md:justify-between md:items-center sticky top-0 bg-white z-50 p-6 shadow-lg backdrop-blur-sm bg-white/90 rounded-xl mx-4 -mt-4 mb-8 animate-slideDown">
           <div className="text-center md:text-left text-xl font-bold mb-4 md:mb-0">
@@ -474,6 +536,36 @@ export default function AssignmentView() {
               <div className="flex items-center gap-3 text-red-600 font-bold text-lg bg-red-50 px-4 py-2 rounded-lg animate-pulse">
                 <Timer className="w-5 h-5" /> {formatTime(timeLeft ?? 0)}
               </div>
+            )}
+            {/* Full Screen Button: Only show when not in full screen */}
+            {!isFullScreen && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={() => {
+                  document.documentElement.requestFullscreen().catch((err) => {
+                    console.error('Error attempting to enable full-screen:', err.message);
+                  });
+                }}
+                className="flex items-center gap-2"
+                aria-label="Enter Full Screen"
+              >
+                <Maximize2 className="w-5 h-5" />
+                Enter Full Screen
+              </Button>
+            )}
+            {/* Exit Full Screen Button: Only show when in full screen */}
+            {isFullScreen && (
+              <Button
+                type="button"
+                variant="outline"
+                onClick={handleExitFullScreen}
+                className="flex items-center gap-2"
+                aria-label="Exit Full Screen"
+              >
+                <Minimize2 className="w-5 h-5" />
+                Exit Full Screen
+              </Button>
             )}
             <Button
               onClick={handleSubmit}

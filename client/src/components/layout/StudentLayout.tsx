@@ -7,9 +7,10 @@ import { Redirect } from 'wouter';
 
 interface StudentLayoutProps {
   children: React.ReactNode;
+  hideSidebarAndHeader?: boolean;
 }
 
-export default function StudentLayout({ children }: StudentLayoutProps) {
+export default function StudentLayout({ children, hideSidebarAndHeader = false }: StudentLayoutProps) {
   const { isLoggedIn, isStudent, loading } = useAuth();
   const [isFullScreen, setIsFullScreen] = useState(false);
 
@@ -39,9 +40,9 @@ export default function StudentLayout({ children }: StudentLayoutProps) {
   return (
     <SidebarProvider>
       <div className="flex h-screen overflow-hidden bg-[var(--bg-primary)]">
-        {!isFullScreen && <Sidebar />}
-        <div className={`flex-1 flex flex-col overflow-hidden ${isFullScreen ? 'w-full' : ''}`}>
-          {!isFullScreen && <Header />}
+        {!hideSidebarAndHeader && !isFullScreen && <Sidebar />}
+        <div className={`flex-1 flex flex-col overflow-hidden ${(isFullScreen || hideSidebarAndHeader) ? 'w-full' : ''}`}>
+          {!hideSidebarAndHeader && !isFullScreen && <Header />}
           <main className="flex-1 overflow-y-auto bg-[var(--bg-secondary)] p-4 md:p-6">
             {children}
           </main>

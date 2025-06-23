@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { useParams, useLocation } from 'wouter';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import StudentLayout from '@/components/layout/StudentLayout';
@@ -7,10 +7,12 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button, ButtonProps } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Loader2, Timer } from 'lucide-react';
+import { Loader2, Timer, Maximize2, Minimize2 } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 import { apiRequest } from '@/lib/queryClient';
 import CodeEditor from '@/components/editor/CodeEditor';
+import { useToast } from '@/components/ui/use-toast';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
 
 export default function TestView() {
   const { id } = useParams();
@@ -26,6 +28,8 @@ export default function TestView() {
   const queryClient = useQueryClient();
   const { data: test, isLoading } = useQuery<Test>({ queryKey: [`/api/student/tests/${id}`] });
   const { data: resultData } = useQuery<{ result: Result }>({ queryKey: [`/api/student/tests/${id}/results`], retry: false });
+  const [isFullScreen, setIsFullScreen] = useState(!!document.fullscreenElement);
+  const { toast } = useToast();
 
   // Handler for updating answers from CodeEditor
   const handleCodeAnswerChange = (questionIdentifier: string, answer: { code?: string; output?: string; testResults?: any[]; score?: number }) => {
@@ -80,6 +84,50 @@ export default function TestView() {
   useEffect(() => {
     localStorage.setItem(`answers-${id}`, JSON.stringify(answers));
   }, [answers, id]);
+
+  useEffect(() => {
+    // Automatically enter full screen when the test starts
+    if (!document.fullscreenElement) {
+      document.documentElement.requestFullscreen().catch((err) => {
+        console.error('Error attempting to enable full-screen:', err.message);
+      });
+    }
+  }, []);
+
+  useEffect(() => {
+    // Listen for exiting full screen and force re-enter with warning
+    const handleFullScreenChange = () => {
+      setIsFullScreen(!!document.fullscreenElement);
+      if (!document.fullscreenElement) {
+        toast({
+          title: 'Full Screen Required',
+          description: 'You must stay in full screen mode during the test.',
+          variant: 'destructive',
+        });
+        document.documentElement.requestFullscreen().catch((err) => {
+          console.error('Error attempting to re-enable full-screen:', err.message);
+        });
+      }
+    };
+    document.addEventListener('fullscreenchange', handleFullScreenChange);
+    return () => {
+      document.removeEventListener('fullscreenchange', handleFullScreenChange);
+    };
+  }, [toast]);
+
+  const handleEnterFullScreen = () => {
+    document.documentElement.requestFullscreen().catch((err) => {
+      console.error('Error attempting to enable full-screen:', err.message);
+    });
+  };
+
+  const handleExitFullScreen = () => {
+    if (document.fullscreenElement) {
+      document.exitFullscreen().catch((err) => {
+        console.error('Error attempting to exit full-screen:', err.message);
+      });
+    }
+  };
 
   const formatTime = (seconds: number) => `${Math.floor(seconds / 60)}:${(seconds % 60).toString().padStart(2, '0')}`;
 
@@ -201,6 +249,12 @@ export default function TestView() {
       localStorage.removeItem(`answers-${id}`);
       localStorage.removeItem(`startTime-${id}`);
       queryClient.invalidateQueries();
+      // Exit full screen after submission
+      if (document.fullscreenElement) {
+        document.exitFullscreen().catch((err) => {
+          console.error('Error attempting to exit full-screen after submission:', err.message);
+        });
+      }
     }
   });
 
@@ -347,6 +401,31 @@ export default function TestView() {
 
   return (
     <div className="bg-gray-50 w-full min-h-screen p-4">
+      {/* Full Screen Enforcement Modal */}
+      <Dialog open={!isFullScreen}>
+        <DialogContent>
+          <DialogHeader>
+            <DialogTitle>Full Screen Required</DialogTitle>
+            <DialogDescription>
+              You must be in full screen mode to continue your test. Please click the button below to re-enter full screen.
+            </DialogDescription>
+          </DialogHeader>
+          <Button
+            type="button"
+            onClick={() => {
+              document.documentElement.requestFullscreen().catch((err) => {
+                console.error('Error attempting to enable full-screen:', err.message);
+              });
+            }}
+            className="w-full mt-4 flex items-center gap-2 justify-center"
+            aria-label="Enter Full Screen"
+          >
+            <Maximize2 className="w-5 h-5" />
+            Enter Full Screen
+          </Button>
+        </DialogContent>
+      </Dialog>
+
       <div className="flex flex-col md:flex-row md:justify-between md:items-center sticky top-0 bg-white z-50 p-6 shadow-lg backdrop-blur-sm bg-white/90 rounded-xl mx-4 -mt-4 mb-8 animate-slideDown">
         <div className="text-center md:text-left text-xl font-bold mb-4 md:mb-0">
           <span className="text-gray-600">Test:</span> {test?.title}
@@ -384,6 +463,36 @@ export default function TestView() {
               </span>
             ) : 'Submit Test'}
           </Button>
+          {/* Full Screen Button: Only show when not in full screen */}
+          {!isFullScreen && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={() => {
+                document.documentElement.requestFullscreen().catch((err) => {
+                  console.error('Error attempting to enable full-screen:', err.message);
+                });
+              }}
+              className="flex items-center gap-2"
+              aria-label="Enter Full Screen"
+            >
+              <Maximize2 className="w-5 h-5" />
+              Enter Full Screen
+            </Button>
+          )}
+          {/* Exit Full Screen Button: Only show when in full screen */}
+          {isFullScreen && (
+            <Button
+              type="button"
+              variant="outline"
+              onClick={handleExitFullScreen}
+              className="flex items-center gap-2"
+              aria-label="Exit Full Screen"
+            >
+              <Minimize2 className="w-5 h-5" />
+              Exit Full Screen
+            </Button>
+          )}
         </div>
       </div>
 
