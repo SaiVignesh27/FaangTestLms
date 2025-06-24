@@ -71,9 +71,6 @@ export default function TestResults() {
 
   const { test, result } = resultData;
   const courseId = test?.courseId;
-  const backPath = courseId
-    ? `/student/courses/${courseId}`
-    : "/student/daily-tests";
 
   // Calculate statistics
   const totalQuestions = test?.questions?.length || 0;
@@ -119,9 +116,9 @@ export default function TestResults() {
       <div className="space-y-8">
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg animate-fadeIn">
           <Button variant="outline" asChild className="mb-4 hover:scale-105 transition-transform">
-            <Link href={backPath}>
+            <Link href="/student/daily-tests">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to {courseId ? "Course" : "Tests"}
+              Back to Tests
             </Link>
           </Button>
           <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent animate-gradient">

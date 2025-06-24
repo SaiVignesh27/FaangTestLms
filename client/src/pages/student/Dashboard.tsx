@@ -207,7 +207,7 @@ export default function StudentDashboard() {
                 asChild 
                 className="bg-white text-blue-600 hover:bg-blue-50 transition-all duration-300 hover:scale-105"
               >
-                <Link href="/student/courses">Continue Learning</Link>
+                <Link href="/student/daily-tests">Continue Learning</Link>
               </Button>
             </div>
           </div>

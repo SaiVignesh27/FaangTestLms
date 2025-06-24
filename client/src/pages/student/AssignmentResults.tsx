@@ -72,9 +72,6 @@ export default function AssignmentResults() {
 
   const { assignment, result } = resultData;
   const courseId = assignment?.courseId;
-  const backPath = courseId
-    ? `/student/courses/${courseId}`
-    : "/student/assignments";
 
   // Calculate statistics
   const totalQuestions = assignment?.questions?.length || 0;
@@ -148,9 +145,9 @@ export default function AssignmentResults() {
       <div className="space-y-8">
         <div className="bg-white dark:bg-gray-800 rounded-xl p-6 shadow-lg animate-fadeIn">
           <Button variant="outline" asChild className="mb-4 hover:scale-105 transition-transform">
-            <Link href={backPath}>
+            <Link href="/student/assignments">
               <ArrowLeft className="h-4 w-4 mr-2" />
-              Back to {courseId ? "Course" : "Assignments"}
+            Back to Assignments
             </Link>
           </Button>
           <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent animate-gradient">
