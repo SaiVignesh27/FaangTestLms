@@ -46,7 +46,7 @@ export default function MainPage() {
               { icon: <BookOpen className="w-5 h-5 text-purple-600" />, label: "Expert Content", bg: "bg-purple-100" },
               { icon: <ArrowRight className="w-5 h-5 text-green-600" />, label: "Career Ready", bg: "bg-green-100" }
             ].map(({ icon, label, bg }, i) => (
-              <div key={i} className="bg-white p-3 rounded-xl shadow-sm flex items-center space-x-2 hover:shadow-md transition-shadow">
+              <div key={i} className="bg-white p-3 rounded-xl shadow-sm flex items-center space-x-2">
                 <div className={`p-2 rounded-lg ${bg}`}>{icon}</div>
                 <span className="text-sm font-medium text-gray-900">{label}</span>
               </div>
