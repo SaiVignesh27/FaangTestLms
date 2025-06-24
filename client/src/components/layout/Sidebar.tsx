@@ -4,6 +4,7 @@ import { useSidebar } from '@/contexts/SidebarContext';
 import { useAuth } from '@/providers/AuthProvider';
 import { Code, Users, School, VideoIcon, FileQuestion, ClipboardList, Trophy, User, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
+import faangtechlogo from "../../faangtech .jpg"
 
 interface NavItemProps {
   href: string;
@@ -77,8 +78,8 @@ export default function Sidebar() {
       <div className="flex items-center justify-between h-16 px-4 border-b border-[var(--border-color)]">
         <Link href="/">
           <a className="flex items-center space-x-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary text-white">
-              <Code className="w-4 h-4" />
+            <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary text-white overflow-hidden">
+              <img src={faangtechlogo} alt="Faang Tech Lab Logo" className="w-8 h-8" />
             </div>
             <span className="text-lg font-semibold text-[var(--text-primary)]">Faang Tech Lab </span>
           </a>

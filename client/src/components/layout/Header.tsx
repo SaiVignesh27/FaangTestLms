@@ -4,7 +4,7 @@ import { useTheme } from '@/providers/ThemeProvider';
 import { useAuth } from '@/providers/AuthProvider';
 import { useSidebar } from '@/contexts/SidebarContext';
 import { Avatar, AvatarFallback } from '@/components/ui/avatar';
-import { useLocation } from 'wouter';
+import { Link, useLocation } from 'wouter';
 
 export default function Header() {
   const { toggleTheme, theme } = useTheme();
@@ -51,6 +51,12 @@ export default function Header() {
     return names[0].substring(0, 2).toUpperCase();
   };
 
+  const getProfileLink = () => {
+    if (user?.role === 'admin') return '/admin/profile';
+    if (user?.role === 'student') return '/student/profile';
+    return '/';
+  };
+
   return (
     <header className="h-16 border-b border-[var(--border-color)] bg-[var(--bg-primary)]">
       <div className="flex items-center justify-between h-full px-4">
@@ -80,7 +86,7 @@ export default function Header() {
             )}
           </button>
           
-          <div className="relative">
+          {/* <div className="relative">
             <button 
               className="p-1.5 rounded-md hover:bg-[var(--hover-bg)] relative"
               aria-label="View notifications"
@@ -88,17 +94,22 @@ export default function Header() {
               <Bell className="h-5 w-5 text-[var(--icon-primary)]" />
               <span className="absolute top-1 right-1 w-2 h-2 bg-primary rounded-full"></span>
             </button>
-          </div>
+          </div> */}
           
           <div className="flex items-center pl-2 border-l border-[var(--border-color)]">
-            <Avatar className="h-8 w-8">
-              <AvatarFallback className="bg-primary text-white">
-                {getUserInitials()}
-              </AvatarFallback>
-            </Avatar>
-            <span className="text-sm font-medium hidden sm:block ml-2 text-[var(--text-primary)]">
-              {user?.name || 'User'}
-            </span>
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-primary text-white">
+                  
+              <Link to={getProfileLink()}>
+                  {getUserInitials()}
+                  </Link>
+                </AvatarFallback>
+              </Avatar>
+              <Link to={getProfileLink()}>
+              <span className="text-sm font-medium hidden sm:block ml-2 text-[var(--text-primary)]">
+                {user?.name || 'User'}
+              </span>
+            </Link>
           </div>
         </div>
       </div>

@@ -147,7 +147,7 @@ export default function AssignmentResults() {
           <Button variant="outline" asChild className="mb-4 hover:scale-105 transition-transform">
             <Link href="/student/assignments">
               <ArrowLeft className="h-4 w-4 mr-2" />
-            Back to Assignments
+                Back to Assignments
             </Link>
           </Button>
           <h2 className="text-3xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent animate-gradient">

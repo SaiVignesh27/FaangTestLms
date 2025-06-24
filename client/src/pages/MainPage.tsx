@@ -14,14 +14,8 @@ export default function MainPage() {
           </div>
           <div className="flex space-x-3 items-center">
             <Link
-              to="/admin/login"
-              className="px-3 py-1.5 text-indigo-600 hover:text-indigo-700 font-medium text-sm"
-            >
-              Admin Login
-            </Link>
-            <Link
               to="/student/login"
-              className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm"
+              className="px-3 py-1.5 bg-indigo-600 text-white rounded-lg hover:text-indigo-600 hover:bg-white font-medium text-sm"
             >
               Student Login
             </Link>
@@ -64,14 +58,8 @@ export default function MainPage() {
               to="/student/login"
               className="px-4 py-2 bg-indigo-600 text-white rounded-lg hover:bg-indigo-700 text-sm flex items-center space-x-1"
             >
-              <span>Get Started</span>
+              <span>Student Portal</span>
               <ArrowRight className="w-4 h-4" />
-            </Link>
-            <Link
-              to="/admin/login"
-              className="px-4 py-2 border border-indigo-600 text-indigo-600 rounded-lg hover:bg-indigo-50 text-sm"
-            >
-              Admin Portal
             </Link>
           </div>
         </div>
