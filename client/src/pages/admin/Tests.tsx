@@ -106,6 +106,7 @@ export default function Tests() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTest, setSelectedTest] = useState<Test | null>(null);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   // Fetch tests
   const { data: tests, isLoading: isLoadingTests } = useQuery<Test[]>({
@@ -273,8 +274,9 @@ export default function Tests() {
     },
   });
 
-  // Form submission handler
-  const onSubmit = (data: TestFormValues) => {
+  // Replace onSubmit with onValid and onInvalid handlers
+  const onValid = (data: TestFormValues) => {
+    setSubmitAttempted(false);
     // Process form data before submission
     // Ensure correctAnswer is properly formatted based on question type
     const processedData = {
@@ -287,12 +289,14 @@ export default function Tests() {
         return q;
       })
     };
-
     if (selectedTest) {
       updateTestMutation.mutate({ id: selectedTest._id as string, testData: processedData });
     } else {
       createTestMutation.mutate(processedData);
     }
+  };
+  const onInvalid = () => {
+    setSubmitAttempted(true);
   };
 
   // Find course name by ID
@@ -782,8 +786,32 @@ public class Main {
               </DialogDescription>
             </DialogHeader>
           </div>
+          {submitAttempted && (form.formState.errors.title || form.formState.errors.courseId || form.formState.errors.classId || form.formState.errors.timeLimit || form.formState.errors.visibility || form.formState.errors.questions) && (
+            <div className="relative flex flex-col gap-2 mb-6 animate-fadeIn">
+              <div className="flex items-start gap-3 p-5 rounded-lg border-l-8 border-red-500 bg-gradient-to-r from-red-50 to-white shadow-md">
+                <svg className="w-7 h-7 text-red-500 flex-shrink-0 mt-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  <div className="text-lg font-bold text-red-700 mb-1 flex items-center gap-2">
+                    <span>Form Incomplete</span>
+                    {(form.formState.errors.title || form.formState.errors.courseId || form.formState.errors.classId || form.formState.errors.timeLimit || form.formState.errors.visibility) && <span className="px-2 py-1 bg-red-200 rounded font-bold text-xs">Test Details</span>}
+                    {form.formState.errors.questions && <span className="px-2 py-1 bg-red-200 rounded font-bold text-xs">Questions</span>}
+                  </div>
+                  <div className="text-sm text-red-700 mb-2">Please fix the issues in above section before submitting</div>
+                </div>
+              </div>
+              <style>{`
+                @keyframes fadeIn {
+                  from { opacity: 0; transform: translateY(-10px); }
+                  to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-fadeIn { animation: fadeIn 0.4s ease; }
+              `}</style>
+            </div>
+          )}
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-6 overflow-y-auto">
+            <form onSubmit={form.handleSubmit(onValid, onInvalid)} className="space-y-6 p-6 overflow-y-auto">
               <Tabs defaultValue="details" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
                   <TabsTrigger 
@@ -1058,7 +1086,7 @@ public class Main {
             <Button 
               type="submit" 
               disabled={createTestMutation.isPending || updateTestMutation.isPending}
-              onClick={form.handleSubmit(onSubmit)}
+              onClick={form.handleSubmit(onValid, onInvalid)}
               className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
             >
               {(createTestMutation.isPending || updateTestMutation.isPending) && (

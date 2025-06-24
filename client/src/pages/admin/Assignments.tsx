@@ -131,6 +131,7 @@ export default function Assignments() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedAssignment, setSelectedAssignment] = useState<Assignment | null>(null);
+  const [submitAttempted, setSubmitAttempted] = useState(false);
 
   // Fetch assignments
   const { data: assignments, isLoading: isLoadingAssignments } = useQuery<Assignment[]>({
@@ -288,7 +289,8 @@ export default function Assignments() {
   });
 
   // Form submission handler
-  const onSubmit = (data: AssignmentFormValues) => {
+  const onValid = (data: AssignmentFormValues) => {
+    setSubmitAttempted(false);
     // Process form data before submission
     // Ensure correctAnswer is properly formatted based on question type
     const processedData = {
@@ -307,12 +309,15 @@ export default function Assignments() {
         return q;
       })
     };
-
     if (selectedAssignment) {
       updateAssignmentMutation.mutate({ id: selectedAssignment._id as string, assignmentData: processedData });
     } else {
       createAssignmentMutation.mutate(processedData);
     }
+  };
+
+  const onInvalid = () => {
+    setSubmitAttempted(true);
   };
 
   // Find course name by ID
@@ -786,8 +791,32 @@ export default function Assignments() {
               </DialogDescription>
             </DialogHeader>
           </div>
+          {submitAttempted && (form.formState.errors.title || form.formState.errors.courseId || form.formState.errors.timeWindow || form.formState.errors.timeLimit || form.formState.errors.visibility || form.formState.errors.questions) && (
+            <div className="relative flex flex-col gap-2 mb-6 animate-fadeIn">
+              <div className="flex items-start gap-3 p-5 rounded-lg border-l-8 border-red-500 bg-gradient-to-r from-red-50 to-white shadow-md">
+                <svg className="w-7 h-7 text-red-500 flex-shrink-0 mt-1" fill="none" stroke="currentColor" strokeWidth="2" viewBox="0 0 24 24">
+                  <path strokeLinecap="round" strokeLinejoin="round" d="M12 9v2m0 4h.01M21 12a9 9 0 11-18 0 9 9 0 0118 0z" />
+                </svg>
+                <div className="flex-1">
+                  <div className="text-lg font-bold text-red-700 mb-1 flex items-center gap-2">
+                    <span>Form Incomplete</span>
+                    {(form.formState.errors.title || form.formState.errors.courseId || form.formState.errors.timeWindow || form.formState.errors.timeLimit || form.formState.errors.visibility) && <span className="px-2 py-1 bg-red-200 rounded font-bold text-xs">Assignment Details</span>}
+                    {form.formState.errors.questions && <span className="px-2 py-1 bg-red-200 rounded font-bold text-xs">Questions</span>}
+                  </div>
+                  <div className="text-sm text-red-700 mb-2">Please fix the issues in above section before submitting</div>
+                </div>
+              </div>
+              <style>{`
+                @keyframes fadeIn {
+                  from { opacity: 0; transform: translateY(-10px); }
+                  to { opacity: 1; transform: translateY(0); }
+                }
+                .animate-fadeIn { animation: fadeIn 0.4s ease; }
+              `}</style>
+            </div>
+          )}
           <Form {...form}>
-            <form onSubmit={form.handleSubmit(onSubmit)} className="space-y-6 p-6 overflow-y-auto">
+            <form onSubmit={form.handleSubmit(onValid, onInvalid)} className="space-y-6 p-6 overflow-y-auto">
               <Tabs defaultValue="details" className="w-full">
                 <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
                   <TabsTrigger 
@@ -1200,7 +1229,7 @@ export default function Assignments() {
             <Button 
               type="submit" 
               disabled={createAssignmentMutation.isPending || updateAssignmentMutation.isPending}
-              onClick={form.handleSubmit(onSubmit)}
+              onClick={form.handleSubmit(onValid, onInvalid)}
               className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
             >
               {(createAssignmentMutation.isPending || updateAssignmentMutation.isPending) && (
