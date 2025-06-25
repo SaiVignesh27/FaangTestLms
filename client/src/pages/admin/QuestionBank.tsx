@@ -43,7 +43,7 @@ const questionSchema = z.object({
 });
 
 const setFormSchema = z.object({
-  name: z.string().min(1, 'Set name is required'),
+  name: z.string().min(1, 'Module name is required'),
   description: z.string().optional(),
   questions: z.array(questionSchema).min(1, 'At least one question is required'),
 });
@@ -121,7 +121,7 @@ export default function QuestionBank() {
   const handleCreateSet = async (data: SetFormValues) => {
     setLoading(true);
     try {
-      console.log('Creating set with data:', data);
+      console.log('Creating module with data:', data);
       // 1. Create the set (name, description)
       const setRes = await fetch('/api/admin/question-bank/sets', {
         method: 'POST',
@@ -129,7 +129,7 @@ export default function QuestionBank() {
         body: JSON.stringify({ name: data.name, description: data.description }),
       });
       const set = await setRes.json();
-      console.log('Created set:', set);
+      console.log('Created module:', set);
       // 2. For each question, create it and collect IDs
       const questionIds: string[] = [];
       for (const q of data.questions) {
@@ -144,21 +144,21 @@ export default function QuestionBank() {
         if (newQ._id) questionIds.push(newQ._id);
       }
       // 3. Update the set's questions array
-      console.log('Updating set with question IDs:', questionIds);
+      console.log('Updating module with question IDs:', questionIds);
       const updateRes = await fetch(`/api/admin/question-bank/sets/${set._id}`, {
         method: 'PUT',
         headers: getAdminHeaders(),
         body: JSON.stringify({ questions: questionIds }),
       });
       const updatedSet = await updateRes.json();
-      console.log('Updated set:', updatedSet);
+      console.log('Updated module:', updatedSet);
       setLoading(false);
       fetchSets();
       form.reset();
     } catch (error) {
       setLoading(false);
-      console.error('Error creating set:', error);
-      alert('Error creating set. See console for details.');
+      console.error('Error creating module:', error);
+      alert('Error creating module. See console for details.');
     }
   };
   const handleEditSet = async (set: QuestionSet) => {
@@ -224,15 +224,18 @@ export default function QuestionBank() {
       fetchSets();
     } catch (error) {
       setLoading(false);
-      console.error('Error updating set:', error);
-      alert('Error updating set. See console for details.');
+      console.error('Error updating module:', error);
+      alert('Error updating module. See console for details.');
     }
   };
   const handleDeleteSet = async (setId: string) => {
     setLoading(true);
     try {
       console.log('Deleting set:', setId);
-      const res = await fetch(`/api/admin/question-bank/sets/${setId}`, { headers: getAdminHeaders() });
+      const res = await fetch(`/api/admin/question-bank/sets/${setId}`, { 
+        method: 'DELETE',
+        headers: getAdminHeaders() 
+      });
       const result = await res.json();
       console.log('Delete set result:', result);
       if (selectedSet?._id === setId) setSelectedSet(null);
@@ -240,8 +243,8 @@ export default function QuestionBank() {
       fetchSets();
     } catch (error) {
       setLoading(false);
-      console.error('Error deleting set:', error);
-      alert('Error deleting set. See console for details.');
+      console.error('Error deleting module:', error);
+      alert('Error deleting module. See console for details.');
     }
   };
 
@@ -267,7 +270,7 @@ export default function QuestionBank() {
                 Question Bank
               </h2>
               <p className="text-sm text-blue-100">
-                Create, edit, and manage question sets for use in tests
+                Create, edit, and manage question modules for use in tests
               </p>
             </div>
             <Button 
@@ -275,7 +278,7 @@ export default function QuestionBank() {
               className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-sm hover:shadow-md transition-all duration-200 mt-4 md:mt-0"
               onClick={() => { setEditingSet(null); form.reset(); }}
             >
-              + New Set
+              + New Module
             </Button>
           </div>
         </div>
@@ -286,11 +289,11 @@ export default function QuestionBank() {
         <div className="w-1/3">
           <div className="rounded-xl shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-0 transition-shadow duration-200 hover:shadow-2xl">
             <div className="px-6 py-4 border-b border-gray-200 dark:border-gray-700 flex items-center justify-between sticky top-0 bg-white dark:bg-gray-800 z-10 rounded-t-xl">
-              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Question Sets</h3>
+              <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Question Modules</h3>
             </div>
             <div className="p-4">
               {loading && <div className="flex items-center justify-center py-8"><Loader2 className="animate-spin h-6 w-6 text-blue-600" /></div>}
-              {!loading && sets.length === 0 && <div className="text-gray-500 text-center py-8">No sets found. Create your first set!</div>}
+              {!loading && sets.length === 0 && <div className="text-gray-500 text-center py-8">No Modules found. Create your first Module!</div>}
               <ul className="space-y-2">
                 {(Array.isArray(sets) ? sets : []).map(set => (
                   <li
@@ -301,7 +304,7 @@ export default function QuestionBank() {
                     <div className="flex justify-between items-center mb-1">
                       <span className="font-semibold text-base text-gray-900 dark:text-white group-hover:text-blue-700 dark:group-hover:text-blue-300">{set.name}</span>
                       <div className="flex gap-2">
-                        <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); handleEditSet(set); }}><span className="sr-only">Edit</span>✏️</Button></TooltipTrigger><TooltipContent>Edit Set</TooltipContent></Tooltip></TooltipProvider>
+                        <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" onClick={e => { e.stopPropagation(); handleEditSet(set); }}><span className="sr-only">Edit</span>✏️</Button></TooltipTrigger><TooltipContent>Edit Module</TooltipContent></Tooltip></TooltipProvider>
                         <TooltipProvider><Tooltip><TooltipTrigger asChild><Button variant="ghost" size="sm" className="text-red-600" onClick={e => { e.stopPropagation(); setDeleteSetId(set._id); }}><span className="sr-only">Delete</span>🗑️</Button></TooltipTrigger><TooltipContent>Delete Set</TooltipContent></Tooltip></TooltipProvider>
                       </div>
                     </div>
@@ -321,7 +324,7 @@ export default function QuestionBank() {
           <div className="max-w-2xl mx-auto">
             <div className="bg-white dark:bg-gray-800 rounded-xl shadow-lg p-8 border border-gray-200 dark:border-gray-700 transition-shadow duration-200 hover:shadow-2xl">
               <h2 className="text-xl font-bold mb-4 text-gray-900 dark:text-white border-b border-gray-100 dark:border-gray-700 pb-2 flex items-center gap-2">
-                {editingSet ? 'Edit Set' : 'Add Set'}
+                {editingSet ? 'Edit Module' : 'Add Module'}
               </h2>
               <Form {...form}>
                 <form onSubmit={form.handleSubmit(editingSet ? handleUpdateSet : handleCreateSet)}>
@@ -331,9 +334,9 @@ export default function QuestionBank() {
                       name="name"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel>Set Name</FormLabel>
+                          <FormLabel>Module Name</FormLabel>
                           <FormControl>
-                            <Input {...field} placeholder="Set Name" />
+                            <Input {...field} placeholder="Module Name" />
                           </FormControl>
                           <FormMessage />
                         </FormItem>
@@ -355,7 +358,7 @@ export default function QuestionBank() {
                   </div>
                   <div className="flex justify-between items-center mt-6 mb-2 border-b border-gray-100 dark:border-gray-700 pb-2">
                     <div className="flex items-center gap-2">
-                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Questions in Set</h3>
+                      <h3 className="text-lg font-semibold text-gray-900 dark:text-white">Questions in Module</h3>
                       <TooltipProvider>
                         <Tooltip>
                           <TooltipTrigger asChild>
@@ -639,7 +642,7 @@ export default function QuestionBank() {
                     ))}
                   </Accordion>
                   <div className="flex gap-2 mt-8">
-                    <Button type="submit" className="w-full">{editingSet ? 'Update Set' : 'Create Set'}</Button>
+                    <Button type="submit" className="w-full">{editingSet ? 'Update Module' : 'Create Module'}</Button>
                     {editingSet && <Button type="button" variant="ghost" className="w-full" onClick={() => { setEditingSet(null); form.reset(); }}>Cancel</Button>}
                   </div>
                 </form>
@@ -655,12 +658,12 @@ export default function QuestionBank() {
                       <TooltipTrigger asChild>
                         <Info className="h-4 w-4 text-blue-500 cursor-pointer" />
                       </TooltipTrigger>
-                      <TooltipContent side="top">These are the questions currently in this set.</TooltipContent>
+                      <TooltipContent side="top">These are the questions currently in this module.</TooltipContent>
                     </Tooltip>
                   </TooltipProvider>
                 </div>
                 {Array.isArray(selectedSet.questions) && selectedSet.questions.length === 0 && (
-                  <div className="text-gray-500 text-center py-8">No questions in this set yet.</div>
+                  <div className="text-gray-500 text-center py-8">No questions in this Module yet.</div>
                 )}
                 {/* Optionally, you can fetch and display the full question details here if needed */}
               </div>
@@ -672,8 +675,8 @@ export default function QuestionBank() {
       {deleteSetId && (
         <div className="fixed inset-0 flex items-center justify-center bg-black bg-opacity-50 z-50 transition-all duration-200">
           <div className="bg-white dark:bg-gray-900 rounded-xl shadow-2xl p-8 w-full max-w-sm border border-gray-200 dark:border-gray-700 animate-fadeIn">
-            <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Delete Set</h3>
-            <div className="text-gray-700 dark:text-gray-300">Are you sure you want to delete this set?</div>
+            <h3 className="text-lg font-semibold mb-2 text-gray-900 dark:text-white">Delete Module</h3>
+            <div className="text-gray-700 dark:text-gray-300">Are you sure you want to delete this Module?</div>
             <div className="flex gap-2 mt-6 justify-end">
               <Button variant="outline" onClick={() => setDeleteSetId(null)}>Cancel</Button>
               <Button
