@@ -202,7 +202,7 @@ export default function Leaderboard() {
                   </SelectTrigger>
                   <SelectContent>
                     <SelectItem value="test">Tests</SelectItem>
-                    <SelectItem value="assignment">Assignments</SelectItem>
+                    {/* <SelectItem value="assignment">Assignments</SelectItem> */}
                   </SelectContent>
                 </Select>
 

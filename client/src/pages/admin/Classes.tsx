@@ -257,7 +257,7 @@ export default function Classes() {
           <Card className="shadow-lg border-gray-200 dark:border-gray-700 transition-all duration-200 hover:shadow-xl">
             <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
               <CardTitle className="text-xl font-semibold text-gray-900 dark:text-white">Classes</CardTitle>
-              <CardDescription className="text-gray-600 dark:text-gray-400">All video and document classes organized by course</CardDescription>
+              <CardDescription className="text-gray-600 dark:text-gray-400">All video and document classes organized by clusters</CardDescription>
             </CardHeader>
             <CardContent className="p-0">
               {isLoadingClasses ? (
@@ -270,7 +270,7 @@ export default function Classes() {
                     <TableHeader>
                       <TableRow className="bg-gray-50 dark:bg-gray-800/50">
                         <TableHead className="font-semibold">Title</TableHead>
-                        <TableHead className="font-semibold">Course</TableHead>
+                        <TableHead className="font-semibold">Cluster</TableHead>
                         <TableHead className="font-semibold">Type</TableHead>
                         <TableHead className="font-semibold">Visibility</TableHead>
                         <TableHead className="font-semibold w-[100px]">Actions</TableHead>
@@ -380,7 +380,7 @@ export default function Classes() {
               <DialogDescription className="text-blue-100">
                 {selectedClass 
                   ? 'Update class details and content' 
-                  : 'Add a new video or document class to a course'}
+                  : 'Add a new video or document class to a cluster'}
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -426,7 +426,7 @@ export default function Classes() {
                 name="courseId"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium">Course</FormLabel>
+                    <FormLabel className="text-sm font-medium">Cluster</FormLabel>
                     <Select 
                       onValueChange={field.onChange} 
                       defaultValue={field.value}
@@ -434,7 +434,7 @@ export default function Classes() {
                     >
                       <FormControl>
                         <SelectTrigger className="focus-visible:ring-blue-500 transition-colors duration-200">
-                          <SelectValue placeholder="Select a course" />
+                          <SelectValue placeholder="Select a Cluster" />
                         </SelectTrigger>
                       </FormControl>
                       <SelectContent>
@@ -454,7 +454,7 @@ export default function Classes() {
                           ))
                         ) : (
                           <div className="px-2 py-1 text-sm text-gray-500 dark:text-gray-400">
-                            No courses available
+                            No Clusters available
                           </div>
                         )}
                       </SelectContent>

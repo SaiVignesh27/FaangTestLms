@@ -215,7 +215,7 @@ export default function StudentDashboard() {
         
         {/* Learning Stats */}
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          <Card className="hover:shadow-lg transition-all duration-300 animate-slideUp">
+          {/* <Card className="hover:shadow-lg transition-all duration-300 animate-slideUp">
             <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <FileQuestion className="h-5 w-5 text-purple-500" />
@@ -239,13 +239,13 @@ export default function StudentDashboard() {
                 </div>
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
           
           <Card className="hover:shadow-lg transition-all duration-300 animate-slideUp" style={{ animationDelay: '100ms' }}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <BookOpen className="h-5 w-5 text-blue-500" />
-                Enrolled Courses
+                Enrolled Clusters
               </CardTitle>
             </CardHeader>
             <CardContent>
@@ -289,7 +289,7 @@ export default function StudentDashboard() {
             </CardContent>
           </Card>
 
-          {/* <Card className="hover:shadow-lg transition-all duration-300 animate-slideUp" style={{ animationDelay: '300ms' }}>
+          <Card className="hover:shadow-lg transition-all duration-300 animate-slideUp" style={{ animationDelay: '300ms' }}>
             <CardHeader className="pb-2">
               <CardTitle className="text-sm font-medium flex items-center gap-2">
                 <Award className="h-5 w-5 text-orange-500" />
@@ -317,7 +317,7 @@ export default function StudentDashboard() {
                 </div>
               </div>
             </CardContent>
-          </Card> */}
+          </Card>
         </div>
         
         {/* Course Progress and Upcoming Tasks */}
@@ -326,9 +326,9 @@ export default function StudentDashboard() {
           <Card className="hover:shadow-lg transition-all duration-300 animate-fadeIn">
             <CardHeader>
               <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
-                Course Progress
+                Cluster Progress
               </CardTitle>
-              <CardDescription>Your most recent course activities</CardDescription>
+              <CardDescription>Your most recent cluster activities</CardDescription>
             </CardHeader>
             <CardContent>
               {isLoading ? (
@@ -371,10 +371,10 @@ export default function StudentDashboard() {
                             <FileText className="h-3 w-3 mr-1" />
                             Tests: {course.completedTests}/{course.totalTests}
                           </span>
-                          <span className="flex items-center">
+                          {/* <span className="flex items-center">
                             <ClipboardList className="h-3 w-3 mr-1" />
                             Assignments: {course.completedAssignments}/{course.totalAssignments}
-                          </span>
+                          </span> */}
                           <span className="flex items-center">
                             <CheckCircle className="h-3 w-3 mr-1" />
                             Total: {course.completedItems}/{course.totalItems}
@@ -389,15 +389,15 @@ export default function StudentDashboard() {
                   <div className="inline-flex items-center justify-center w-16 h-16 rounded-full bg-blue-50 dark:bg-blue-900/20 mb-4">
                     <BookOpen className="h-8 w-8 text-blue-500" />
                   </div>
-                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">No courses enrolled</h3>
-                  <p className="text-sm text-gray-500 dark:text-gray-400">Enroll in courses to start learning</p>
+                  <h3 className="text-lg font-medium text-gray-900 dark:text-white mb-1">No Clusters enrolled</h3>
+                  <p className="text-sm text-gray-500 dark:text-gray-400">Enroll in Clusters to start learning</p>
                 </div>
               )}
             </CardContent>
           </Card>
 
           {/* Tests and Assignments Grid */}
-          <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+          <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
             {/* Available Tests */}
             <Card className="hover:shadow-lg transition-all duration-300 animate-fadeIn">
               <CardHeader>
@@ -467,7 +467,7 @@ export default function StudentDashboard() {
               </CardContent>
             </Card>
 
-            {/* Pending Assignments */}
+            {/* Pending Assignments
             <Card className="hover:shadow-lg transition-all duration-300 animate-fadeIn">
               <CardHeader>
                 <CardTitle className="text-xl font-bold bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent">
@@ -541,7 +541,7 @@ export default function StudentDashboard() {
                   </div>
                 )}
               </CardContent>
-            </Card>
+            </Card> */}
           </div>
         </div>
       </div>

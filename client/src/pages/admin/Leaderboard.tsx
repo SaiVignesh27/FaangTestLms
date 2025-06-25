@@ -103,7 +103,7 @@ export default function Leaderboard() {
   const getCourseName = (courseId: string) => {
     if (!courseId) return '';
     const course = courses?.find(c => c._id === courseId);
-    return course?.title || 'Unknown Course';
+    return course?.title || 'Unknown Cluster';
   };
 
   // Format date
@@ -248,7 +248,7 @@ export default function Leaderboard() {
                   Leaderboard
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Track student performance across tests and assignments
+                  Track student performance across tests
                 </p>
               </div>
               <Button 
@@ -288,10 +288,10 @@ export default function Leaderboard() {
                     onValueChange={setSelectedCourse}
                   >
                     <SelectTrigger className="w-full sm:w-60 focus-visible:ring-blue-500 transition-colors duration-200">
-                      <SelectValue placeholder="Filter by course" />
+                      <SelectValue placeholder="Filter by Cluster" />
                     </SelectTrigger>
                     <SelectContent>
-                      <SelectItem value="all" className="cursor-pointer transition-colors duration-200">All Courses</SelectItem>
+                      <SelectItem value="all" className="cursor-pointer transition-colors duration-200">All Clusters</SelectItem>
                       {courses?.map((course) => (
                         <SelectItem 
                           key={course._id} 
@@ -324,7 +324,7 @@ export default function Leaderboard() {
                           <span>Tests</span>
                         </div>
                       </SelectItem>
-                      <SelectItem 
+                      {/* <SelectItem 
                         value="assignment"
                         className="cursor-pointer transition-colors duration-200"
                       >
@@ -332,7 +332,7 @@ export default function Leaderboard() {
                           <ClipboardList className="h-4 w-4 mr-2" />
                           <span>Assignments</span>
                         </div>
-                      </SelectItem>
+                      </SelectItem> */}
                     </SelectContent>
                   </Select>
 
@@ -386,7 +386,7 @@ export default function Leaderboard() {
                       <TableRow className="hover:bg-transparent">
                         <TableHead className="w-[80px] font-semibold">Rank</TableHead>
                         <TableHead className="font-semibold">Student</TableHead>
-                        <TableHead className="font-semibold">Course</TableHead>
+                        <TableHead className="font-semibold">Cluster</TableHead>
                         <TableHead className="font-semibold">{contentType === 'test' ? 'Test' : 'Assignment'}</TableHead>
                         <TableHead className="text-right font-semibold">Score</TableHead>
                         <TableHead className="text-right font-semibold">Completed</TableHead>

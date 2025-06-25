@@ -5,6 +5,7 @@ import { useAuth } from '@/providers/AuthProvider';
 import { Code, Users, School, VideoIcon, FileQuestion, ClipboardList, Trophy, User, Settings, LogOut } from 'lucide-react';
 import { cn } from '@/lib/utils';
 import faangtechlogo from "../../faangtech .jpg"
+import faangtechnav from "../../faangnav.jpg"
 
 interface NavItemProps {
   href: string;
@@ -78,10 +79,10 @@ export default function Sidebar() {
       <div className="flex items-center justify-between h-16 px-4 border-b border-[var(--border-color)]">
         <Link href="/">
           <a className="flex items-center space-x-2">
-            <div className="flex items-center justify-center w-8 h-8 rounded-md bg-primary text-white overflow-hidden">
-              <img src={faangtechlogo} alt="Faang Tech Lab Logo" className="w-8 h-8" />
-            </div>
-            <span className="text-lg font-semibold text-[var(--text-primary)]">Faang Tech Lab </span>
+          <div className="flex items-center">
+            <img src={faangtechnav} alt="FAANGTechLab Logo" className="h-12 w-30 object-contain mr-4" />
+          </div>
+            {/* <span className="text-lg font-semibold text-[var(--text-primary)]">Faang Tech Lab </span> */}
           </a>
         </Link>
         <button 
@@ -121,27 +122,27 @@ export default function Sidebar() {
               <NavItem 
                 href="/admin/courses" 
                 icon={<School />}
-                label="Courses" 
+                label="Clusters" 
                 isActive={isActive("/admin/courses")} 
               />
-              <NavItem 
+              {/* <NavItem 
                 href="/admin/classes" 
                 icon={<VideoIcon />}
                 label="Classes" 
                 isActive={isActive("/admin/classes")} 
-              />
+              /> */}
               <NavItem 
                 href="/admin/tests" 
                 icon={<FileQuestion />}
                 label="Tests" 
                 isActive={isActive("/admin/tests")} 
               />
-              <NavItem 
+              {/* <NavItem 
                 href="/admin/assignments" 
                 icon={<ClipboardList />}
                 label="Assignments" 
                 isActive={isActive("/admin/assignments")} 
-              />
+              /> */}
               <NavItem 
                 href="/admin/leaderboard" 
                 icon={<Trophy />}
@@ -188,12 +189,12 @@ export default function Sidebar() {
                 label="Daily Tests" 
                 isActive={isActive("/student/daily-tests")} 
               />
-              <NavItem 
+              {/* <NavItem 
                 href="/student/assignments" 
                 icon={<ClipboardList />}
                 label="Assignments" 
                 isActive={isActive("/student/assignments")} 
-              />
+              /> */}
               <NavItem 
                 href="/student/leaderboard" 
                 icon={<Trophy />}

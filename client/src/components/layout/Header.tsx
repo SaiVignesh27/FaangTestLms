@@ -17,10 +17,10 @@ export default function Header() {
     if (location.startsWith('/admin')) {
       if (location === '/admin/dashboard') return 'Admin Dashboard';
       if (location === '/admin/users') return 'User Management';
-      if (location === '/admin/courses') return 'Course Management';
-      if (location === '/admin/classes') return 'Class Management';
+      if (location === '/admin/courses') return 'Cluster Management';
+      // if (location === '/admin/classes') return 'Class Management';
       if (location === '/admin/tests') return 'Test Management';
-      if (location === '/admin/assignments') return 'Assignment Management';
+      // if (location === '/admin/assignments') return 'Assignment Management';
       if (location === '/admin/leaderboard') return 'Leaderboard';
       if (location === '/admin/profile') return 'Profile';
       return 'Admin Portal';
@@ -28,9 +28,9 @@ export default function Header() {
     
     if (location.startsWith('/student')) {
       if (location === '/student/dashboard') return 'Student Dashboard';
-      if (location === '/student/courses') return 'My Courses';
+      // if (location === '/student/courses') return 'My Courses';
       if (location === '/student/daily-tests') return 'Daily Tests';
-      if (location === '/student/assignments') return 'My Assignments';
+      // if (location === '/student/assignments') return 'My Assignments';
       if (location === '/student/leaderboard') return 'Leaderboard';
       if (location === '/student/profile') return 'Profile';
       return 'Student Portal';

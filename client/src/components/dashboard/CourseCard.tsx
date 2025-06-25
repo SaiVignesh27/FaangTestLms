@@ -32,7 +32,7 @@ export default function CourseCard({
     <div className="rounded-lg border border-light-border dark:border-dark-border overflow-hidden shadow-sm">
       <img 
         src={imageUrl} 
-        alt={`${title} course`} 
+        alt={`${title} cluster`} 
         className="w-full h-40 object-cover"
       />
       

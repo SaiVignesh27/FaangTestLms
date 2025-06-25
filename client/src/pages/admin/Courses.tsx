@@ -149,13 +149,13 @@ export default function Courses() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/courses'] });
       toast({
         title: 'Success',
-        description: 'Course created successfully',
+        description: 'Cluster created successfully',
       });
       setIsDialogOpen(false);
     },
     onError: (error) => {
       toast({
-        title: 'Error creating course',
+        title: 'Error creating cluster',
         description: (error as Error).message,
         variant: 'destructive',
       });
@@ -170,13 +170,13 @@ export default function Courses() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/courses'] });
       toast({
         title: 'Success',
-        description: 'Course updated successfully',
+        description: 'Cluster updated successfully',
       });
       setSelectedCourse(null);
     },
     onError: (error) => {
       toast({
-        title: 'Error updating course',
+        title: 'Error updating cluster',
         description: (error as Error).message,
         variant: 'destructive',
       });
@@ -190,12 +190,12 @@ export default function Courses() {
       queryClient.invalidateQueries({ queryKey: ['/api/admin/courses'] });
       toast({
         title: 'Success',
-        description: 'Course deleted successfully',
+        description: 'Cluster deleted successfully',
       });
     },
     onError: (error) => {
       toast({
-        title: 'Error deleting course',
+        title: 'Error deleting cluster',
         description: (error as Error).message,
         variant: 'destructive',
       });
@@ -245,17 +245,17 @@ export default function Courses() {
             <div className="flex flex-col md:flex-row items-start md:items-center justify-between">
               <div className="space-y-1">
                 <h2 className="text-3xl font-bold tracking-tight bg-gradient-to-r from-blue-600 to-blue-800 bg-clip-text text-transparent dark:from-blue-400 dark:to-blue-600">
-                  Course Management
+                  Cluster Management
                 </h2>
                 <p className="text-sm text-gray-600 dark:text-gray-300">
-                  Create and manage learning courses
+                  Create and manage learning clusters
                 </p>
               </div>
               <Button 
                 onClick={() => setIsDialogOpen(true)}
                 className="w-full md:w-auto bg-gradient-to-r from-blue-600 to-blue-700 hover:from-blue-700 hover:to-blue-800 text-white shadow-sm hover:shadow-md transition-all duration-200 mt-4 md:mt-0"
               >
-                <Plus className="mr-2 h-4 w-4" /> Create Course
+                <Plus className="mr-2 h-4 w-4" /> Create Cluster
               </Button>
             </div>
           </div>
@@ -304,14 +304,14 @@ export default function Courses() {
               ) : (
                 <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
                   <School className="h-12 w-12 mb-4 opacity-20" />
-                  <h3 className="text-lg font-medium">No courses found</h3>
-                  <p className="text-sm">Create your first course to get started</p>
+                  <h3 className="text-lg font-medium">No clusters found</h3>
+                  <p className="text-sm">Create your first cluster to get started</p>
                   <Button 
                     variant="outline" 
                     className="mt-4 shadow-sm hover:shadow-md transition-shadow"
                     onClick={() => setIsDialogOpen(true)}
                   >
-                    <Plus className="mr-2 h-4 w-4" /> Create Course
+                    <Plus className="mr-2 h-4 w-4" /> Create Cluster
                   </Button>
                 </div>
               )}
@@ -331,12 +331,12 @@ export default function Courses() {
           <div className="bg-gradient-to-r from-blue-600 to-blue-800 p-6 rounded-t-lg shadow-sm">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold text-white">
-                {selectedCourse ? 'Edit Course' : 'Create New Course'}
+                {selectedCourse ? 'Edit cluster' : 'Create New cluster'}
               </DialogTitle>
               <DialogDescription className="text-blue-100">
                 {selectedCourse 
-                  ? 'Update course details and student assignments' 
-                  : 'Fill out the form to create a new course'}
+                  ? 'Update cluster details and student allotment' 
+                  : 'Fill out the form to create a new cluster'}
               </DialogDescription>
             </DialogHeader>
           </div>
@@ -347,7 +347,7 @@ export default function Courses() {
                 name="title"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium">Course Title</FormLabel>
+                    <FormLabel className="text-sm font-medium">Cluster Title</FormLabel>
                     <FormControl>
                       <Input 
                         placeholder="JavaScript Fundamentals" 
@@ -367,7 +367,7 @@ export default function Courses() {
                     <FormLabel className="text-sm font-medium">Description</FormLabel>
                     <FormControl>
                       <Textarea 
-                        placeholder="A comprehensive course covering JavaScript basics to advanced concepts"
+                        placeholder="A comprehensive cluster covering JavaScript basics to advanced concepts"
                         className="resize-none focus-visible:ring-blue-500"
                         {...field}
                         value={field.value || ''}
@@ -624,7 +624,7 @@ export default function Courses() {
               {(createCourseMutation.isPending || updateCourseMutation.isPending) && (
                 <Loader2 className="mr-2 h-4 w-4 animate-spin" />
               )}
-              {selectedCourse ? 'Update Course' : 'Create Course'}
+              {selectedCourse ? 'Update Cluster' : 'Create Cluster'}
             </Button>
           </DialogFooter>
         </DialogContent>

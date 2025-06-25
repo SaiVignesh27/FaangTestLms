@@ -147,10 +147,10 @@ export default function DailyTests() {
 
           <Select value={courseFilter} onValueChange={setCourseFilter}>
             <SelectTrigger className="w-full sm:w-60 transition-all duration-300 hover:shadow-md">
-              <SelectValue placeholder="Filter by course" />
+              <SelectValue placeholder="Filter by Cluster" />
             </SelectTrigger>
             <SelectContent>
-              <SelectItem value="all">All Courses</SelectItem>
+              <SelectItem value="all">All Clusters</SelectItem>
               {courses?.filter(course => course._id).map((course) => (
                 <SelectItem key={course._id || ''} value={course._id || ''}>
                   {course.title}

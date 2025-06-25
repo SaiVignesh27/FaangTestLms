@@ -81,7 +81,7 @@ export default function AdminDashboard() {
   // Find course name by ID
   const getCourseName = (courseId: string) => {
     const course = courses?.find((c: { _id: string; title: string }) => c._id === courseId);
-    return course?.title || 'Unknown Course';
+    return course?.title || 'Unknown cluster';
   };
 
   // Check if assignment is active
@@ -113,7 +113,7 @@ export default function AdminDashboard() {
                 >
                   <a className="flex items-center">
                     <Plus className="mr-2 h-4 w-4" />
-                    Create Course
+                    Create Cluster
                   </a>
                 </Button>
               </Link>
@@ -122,7 +122,7 @@ export default function AdminDashboard() {
         </div>
 
         {/* Stats Overview */}
-        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {isLoadingStats ? (
             Array(4).fill(0).map((_, i) => (
               <Card key={i} className="bg-[var(--bg-secondary)]">
@@ -136,6 +136,7 @@ export default function AdminDashboard() {
             ))
           ) : (
             <>
+            <Link href='/admin/users'>
               <StatCard
                 title="Active Students"
                 value={stats?.students || 0}
@@ -144,14 +145,18 @@ export default function AdminDashboard() {
                 iconBgColor="bg-[var(--primary)] bg-opacity-10"
                 valueColor="text-[var(--primary)] font-bold"
               />
+            </Link>
+            <Link href='/admin/courses'>
               <StatCard
-                title="Active Courses"
+                title="Active Clusters"
                 value={stats?.courses || 0}
                 icon={Airplay}
                 iconColor="text-[var(--green)]"
                 iconBgColor="bg-[var(--green)] bg-opacity-10"
                 valueColor="text-[var(--green)] font-bold"
               />
+            </Link>
+            <Link href='/admin/tests'>
               <StatCard
                 title="Tests Created"
                 value={stats?.tests || 0}
@@ -160,20 +165,21 @@ export default function AdminDashboard() {
                 iconBgColor="bg-[var(--warning)] bg-opacity-10"
                 valueColor="text-[var(--warning)] font-bold"
               />
-              <StatCard
+            </Link>
+              {/* <StatCard
                 title="Pending Assignments"
                 value={stats?.assignments || 0}
                 icon={ClipboardList}
                 iconColor="text-[var(--error)]"
                 iconBgColor="bg-[var(--error)] bg-opacity-10"
                 valueColor="text-[var(--error)] font-bold"
-              />
+              /> */}
             </>
           )}
         </div>
 
         {/* Tests and Assignments Grid */}
-        <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+        <div className="grid grid-cols-1 md:grid-cols-1 gap-6">
           {/* Tests Section */}
           <Card className="bg-[var(--bg-secondary)]">
             <CardHeader className="flex flex-row items-center justify-between pb-4">
@@ -201,7 +207,7 @@ export default function AdminDashboard() {
                     </div>
                   ))
                 ) : tests && tests.length > 0 ? (
-                  tests.slice(0, 5).map((test) => (
+                  tests.slice(-5).reverse().map((test) => (
                     <Link
                       key={test._id}
                       href={`/admin/tests/`}
@@ -232,7 +238,7 @@ export default function AdminDashboard() {
             </CardContent>
           </Card>
 
-          {/* Assignments Section */}
+          {/* Assignments Section
           <Card className="bg-[var(--bg-secondary)]">
             <CardHeader className="flex flex-row items-center justify-between pb-4">
               <div>
@@ -306,7 +312,7 @@ export default function AdminDashboard() {
                 )}
               </div>
             </CardContent>
-          </Card>
+          </Card> */}
         </div>
       </div>
     </AdminLayout>

@@ -298,11 +298,13 @@ export default function Tests() {
   const onInvalid = () => {
     setSubmitAttempted(true);
   };
+  const isFormValid = Object.keys(form.formState.errors).length === 0;
+
 
   // Find course name by ID
   const getCourseName = (courseId: string) => {
     const course = courses?.find(c => c._id === courseId);
-    return course?.title || 'Unknown Course';
+    return course?.title || 'Unknown Cluster';
   };
 
   // Add a new question
@@ -714,7 +716,7 @@ public class Main {
           <Card className="shadow-lg border-gray-200 dark:border-gray-700 transition-all duration-200 hover:shadow-xl">
             <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
               <CardTitle className="text-xl font-semibold text-gray-900 dark:text-white">Tests</CardTitle>
-              <CardDescription className="text-gray-600 dark:text-gray-400">All tests organized by course</CardDescription>
+              <CardDescription className="text-gray-600 dark:text-gray-400">All tests organized by cluster</CardDescription>
             </CardHeader>
             <CardContent className="p-6">
               {isLoadingTests ? (
@@ -779,6 +781,7 @@ public class Main {
               <DialogTitle className="text-xl font-semibold text-white">
                 {selectedTest ? 'Edit Test' : 'Create New Test'}
               </DialogTitle>
+            
               <DialogDescription className="text-blue-100">
                 {selectedTest 
                   ? 'Update test details and questions' 
@@ -870,7 +873,7 @@ public class Main {
                       name="courseId"
                       render={({ field }) => (
                         <FormItem>
-                          <FormLabel className="text-sm font-medium">Course</FormLabel>
+                          <FormLabel className="text-sm font-medium">Cluster</FormLabel>
                           <Select 
                             onValueChange={(value) => {
                               field.onChange(value);
@@ -924,7 +927,7 @@ public class Main {
                           >
                             <FormControl>
                               <SelectTrigger className="focus-visible:ring-blue-500 transition-colors duration-200">
-                                <SelectValue placeholder={selectedCourseId ? "Select a class" : "Select a course first"} />
+                                <SelectValue placeholder={selectedCourseId ? "Select a class" : "Select a cluster first"} />
                               </SelectTrigger>
                             </FormControl>
                             <SelectContent>
