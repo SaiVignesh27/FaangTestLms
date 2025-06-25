@@ -120,6 +120,7 @@ export default function Tests() {
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedTest, setSelectedTest] = useState<Test | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
+  const [currentTab, setCurrentTab] = useState('details');
 
   // Fetch tests
   const { data: tests, isLoading: isLoadingTests } = useQuery<Test[]>({
@@ -185,6 +186,7 @@ export default function Tests() {
         assignedTo: selectedTest.assignedTo || [],
         timeLimit: selectedTest.timeLimit || 30,
       });
+      setCurrentTab('details');
     } else if (isDialogOpen) {
       form.reset({
         title: '',
@@ -204,6 +206,7 @@ export default function Tests() {
         assignedTo: [],
         timeLimit: 30,
       });
+      setCurrentTab('details');
     }
   }, [selectedTest, isDialogOpen, form]);
 
@@ -886,7 +889,7 @@ public class Main {
           )}
           <Form {...form}>
             <form onSubmit={form.handleSubmit(onValid, onInvalid)} className="space-y-6 p-6 overflow-y-auto">
-              <Tabs defaultValue="details" className="w-full">
+              <Tabs value={currentTab} onValueChange={setCurrentTab} className="w-full">
                 <TabsList className="grid w-full grid-cols-2 bg-gray-100 dark:bg-gray-800 p-1 rounded-lg">
                   <TabsTrigger 
                     value="details"
@@ -1168,6 +1171,16 @@ public class Main {
             </form>
           </Form>
           <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t px-6 pb-6">
+            {currentTab === 'questions' && (
+              <Button 
+                type="button"
+                variant="outline" 
+                onClick={() => setCurrentTab('details')}
+                className="w-full sm:w-auto hover:bg-gray-100 dark:hover:bg-gray-800 shadow-sm transition-colors duration-200"
+              >
+                Back to Details
+              </Button>
+            )}
             <Button 
               type="button"
               variant="outline" 
@@ -1179,17 +1192,28 @@ public class Main {
             >
               Cancel
             </Button>
-            <Button 
-              type="submit" 
-              disabled={createTestMutation.isPending || updateTestMutation.isPending}
-              onClick={form.handleSubmit(onValid, onInvalid)}
-              className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
-            >
-              {(createTestMutation.isPending || updateTestMutation.isPending) && (
-                <Loader2 className="mr-2 h-4 w-4 animate-spin" />
-              )}
-              {selectedTest ? 'Update Test' : 'Create Test'}
-            </Button>
+            {currentTab === 'details' && (
+              <Button 
+                type="button"
+                onClick={() => setCurrentTab('questions')}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                Next: Questions
+              </Button>
+            )}
+            {currentTab === 'questions' && (
+              <Button 
+                type="submit" 
+                disabled={createTestMutation.isPending || updateTestMutation.isPending}
+                onClick={form.handleSubmit(onValid, onInvalid)}
+                className="w-full sm:w-auto bg-blue-600 hover:bg-blue-700 text-white shadow-sm hover:shadow-md transition-all duration-200"
+              >
+                {(createTestMutation.isPending || updateTestMutation.isPending) && (
+                  <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+                )}
+                {selectedTest ? 'Update Test' : 'Create Test'}
+              </Button>
+            )}
           </DialogFooter>
         </DialogContent>
       </Dialog>
