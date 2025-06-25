@@ -324,13 +324,14 @@ export default function TestResults() {
                                   {option}
                                 </span>
                                 <div className="flex items-center gap-2">
-                                  {option === answer?.answer && (
+                                  {option === answer?.answer ? (
                                     <span className={`text-sm ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
                                       {isCorrect ? '✓ Your Answer' : '✗ Your Answer'}
                                     </span>
-                                  )}
-                                  {question.correctAnswer === option && !isCorrect && (
-                                    <span className="text-sm text-green-600">✓ Correct Answer</span>
+                                  ) : (
+                                    question.correctAnswer === option && !isCorrect && (
+                                      <span className="text-sm text-green-600">✓ Correct Answer</span>
+                                    )
                                   )}
                                 </div>
                               </div>

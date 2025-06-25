@@ -173,6 +173,42 @@ export const courseProgressSchema = z.object({
   updatedAt: z.date().optional(),
 });
 
+// Question Bank Question schema
+export const questionBankQuestionSchema = z.object({
+  _id: z.string().optional(),
+  text: z.string().min(1, "Question text is required"),
+  type: z.enum(["mcq", "fill", "code"]),
+  options: z.array(z.string()).optional(),
+  correctAnswer: z.union([z.string(), z.array(z.string())]),
+  codeTemplate: z.string().optional(),
+  validationProgram: z.object({
+    java: z.string().optional(),
+    python: z.string().optional(),
+    cpp: z.string().optional(),
+    javascript: z.string().optional()
+  }).optional(),
+  testCases: z.array(
+    z.object({
+      input: z.string(),
+      output: z.string(),
+      description: z.string().optional()
+    })
+  ).optional(),
+  points: z.number().default(1),
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
+});
+
+// Question Set schema
+export const questionSetSchema = z.object({
+  _id: z.string().optional(),
+  name: z.string().min(1, "Set name is required"),
+  description: z.string().optional(),
+  questions: z.array(z.string()), // array of QuestionBankQuestion IDs
+  createdAt: z.date().optional(),
+  updatedAt: z.date().optional(),
+});
+
 // Insert schemas (for creating new records)
 export const insertUserSchema = userSchema.omit({ _id: true });
 export const insertCourseSchema = courseSchema.omit({ _id: true });
@@ -205,3 +241,6 @@ export type InsertResult = z.infer<typeof insertResultSchema>;
 
 export type CourseProgress = z.infer<typeof courseProgressSchema>;
 export type InsertCourseProgress = z.infer<typeof insertCourseProgressSchema>;
+
+export type QuestionBankQuestion = z.infer<typeof questionBankQuestionSchema>;
+export type QuestionSet = z.infer<typeof questionSetSchema>;

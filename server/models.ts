@@ -103,7 +103,41 @@ const assignmentSubmissionSchema = new mongoose.Schema({
   submittedAt: { type: Date, default: Date.now }
 });
 
+// Question Bank Question Schema
+const questionBankQuestionSchema = new mongoose.Schema({
+  text: { type: String, required: true },
+  type: { type: String, enum: ['mcq', 'fill', 'code'], required: true },
+  options: [String],
+  correctAnswer: { type: mongoose.Schema.Types.Mixed, required: true },
+  codeTemplate: String,
+  validationProgram: {
+    java: String,
+    python: String,
+    cpp: String,
+    javascript: String
+  },
+  testCases: [{
+    input: String,
+    output: String,
+    description: String
+  }],
+  points: { type: Number, required: true },
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
+// Question Set Schema
+const questionSetSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  description: String,
+  questions: [{ type: mongoose.Schema.Types.ObjectId, ref: 'QuestionBankQuestion' }],
+  createdAt: { type: Date, default: Date.now },
+  updatedAt: { type: Date, default: Date.now }
+});
+
 export const Test = mongoose.model('Test', testSchema);
 export const TestSubmission = mongoose.model('TestSubmission', testSubmissionSchema);
 export const Assignment = mongoose.model('Assignment', assignmentSchema);
-export const AssignmentSubmission = mongoose.model('AssignmentSubmission', assignmentSubmissionSchema); 
+export const AssignmentSubmission = mongoose.model('AssignmentSubmission', assignmentSubmissionSchema);
+export const QuestionBankQuestion = mongoose.model('QuestionBankQuestion', questionBankQuestionSchema);
+export const QuestionSet = mongoose.model('QuestionSet', questionSetSchema); 

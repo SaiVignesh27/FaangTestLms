@@ -23,6 +23,8 @@ export class MongoDBStorage implements IStorage {
   private assignments!: Collection<Assignment>;
   private results!: Collection<Result>;
   private courseProgress!: Collection<CourseProgress>;
+  private questionBankQuestions!: Collection<any>;
+  private questionSets!: Collection<any>;
   
   constructor(uri: string) {
     this.client = new MongoClient(uri);
@@ -45,6 +47,8 @@ export class MongoDBStorage implements IStorage {
       this.assignments = db.collection('assignments');
       this.results = db.collection('results');
       this.courseProgress = db.collection('courseProgress');
+      this.questionBankQuestions = db.collection('questionBankQuestions');
+      this.questionSets = db.collection('questionSets');
       
       // Create indexes
       await this.users.createIndex({ email: 1 }, { unique: true });
@@ -734,5 +738,76 @@ export class MongoDBStorage implements IStorage {
     }
     
     return this.courseProgress.find(query).toArray();
+  }
+
+  // QuestionBankQuestion CRUD
+  async createQuestionBankQuestion(data: any): Promise<any> {
+    await this.connect();
+    const doc = { ...data, createdAt: new Date(), updatedAt: new Date() };
+    const result = await this.questionBankQuestions.insertOne(doc);
+    return { ...doc, _id: result.insertedId };
+  }
+  async getQuestionBankQuestion(id: string): Promise<any | null> {
+    await this.connect();
+    return this.questionBankQuestions.findOne({ _id: new ObjectId(id) });
+  }
+  async updateQuestionBankQuestion(id: string, data: any): Promise<any | null> {
+    await this.connect();
+    data.updatedAt = new Date();
+    const result = await this.questionBankQuestions.findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      { $set: data },
+      { returnDocument: 'after' }
+    );
+    return result || null;
+  }
+  async deleteQuestionBankQuestion(id: string): Promise<boolean> {
+    await this.connect();
+    const result = await this.questionBankQuestions.deleteOne({ _id: new ObjectId(id) });
+    return result.deletedCount === 1;
+  }
+  async listQuestionBankQuestions(filter: any = {}): Promise<any[]> {
+    await this.connect();
+    return this.questionBankQuestions.find(filter).toArray();
+  }
+
+  // QuestionSet CRUD
+  async createQuestionSet(data: any): Promise<any> {
+    await this.connect();
+    const doc = { ...data, createdAt: new Date(), updatedAt: new Date() };
+    const result = await this.questionSets.insertOne(doc);
+    return { ...doc, _id: result.insertedId };
+  }
+  async getQuestionSet(id: string): Promise<any | null> {
+    await this.connect();
+    return this.questionSets.findOne({ _id: new ObjectId(id) });
+  }
+  async updateQuestionSet(id: string, data: any): Promise<any | null> {
+    await this.connect();
+    data.updatedAt = new Date();
+    console.log('[updateQuestionSet] id:', id);
+    console.log('[updateQuestionSet] data:', JSON.stringify(data, null, 2));
+    const result = await this.questionSets.findOneAndUpdate(
+      { _id: new ObjectId(id) },
+      { $set: data },
+      { returnDocument: 'after' }
+    );
+    console.log('[updateQuestionSet] result:', result);
+    return result || null;
+  }
+  async deleteQuestionSet(id: string): Promise<boolean> {
+    await this.connect();
+    const result = await this.questionSets.deleteOne({ _id: new ObjectId(id) });
+    return result.deletedCount === 1;
+  }
+  async listQuestionSets(filter: any = {}): Promise<any[]> {
+    await this.connect();
+    return this.questionSets.find(filter).toArray();
+  }
+  async listQuestionsInSet(setId: string): Promise<any[]> {
+    await this.connect();
+    const set = await this.questionSets.findOne({ _id: new ObjectId(setId) });
+    if (!set || !set.questions) return [];
+    return this.questionBankQuestions.find({ _id: { $in: set.questions.map((id: string) => new ObjectId(id)) } }).toArray();
   }
 }

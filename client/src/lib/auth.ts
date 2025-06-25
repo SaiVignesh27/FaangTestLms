@@ -10,6 +10,9 @@ export async function loginUser(credentials: LoginCredentials, role: 'admin' | '
   // Store token in localStorage
   localStorage.setItem('token', data.token);
   localStorage.setItem('user', JSON.stringify(data.user));
+  if (data.user && data.user.email) {
+    localStorage.setItem('userEmail', data.user.email);
+  }
   
   // Redirect to the appropriate dashboard based on role
   const redirectUrl = role === 'admin' ? '/admin/dashboard' : '/student/dashboard';
@@ -38,6 +41,7 @@ export function getToken(): string | null {
 export function logout(): void {
   localStorage.removeItem('token');
   localStorage.removeItem('user');
+  localStorage.removeItem('userEmail');
   window.location.href = '/';
 }
 

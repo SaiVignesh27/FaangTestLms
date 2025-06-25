@@ -137,6 +137,12 @@ export default function Sidebar() {
                 label="Tests" 
                 isActive={isActive("/admin/tests")} 
               />
+              <NavItem 
+                href="/admin/question-bank" 
+                icon={<FileQuestion />}
+                label="Question Bank" 
+                isActive={isActive("/admin/question-bank")} 
+              />
               {/* <NavItem 
                 href="/admin/assignments" 
                 icon={<ClipboardList />}

@@ -101,6 +101,19 @@ interface ValidationPrograms {
   javascript?: string;
 }
 
+// Add types for question bank
+interface QuestionBankSet {
+  _id: string;
+  name: string;
+  questions: string[];
+}
+interface QuestionBankQuestion {
+  _id: string;
+  text: string;
+  type: string;
+  points: number;
+}
+
 export default function Tests() {
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -274,20 +287,86 @@ export default function Tests() {
     },
   });
 
+  // Question bank state
+  const [bankSets, setBankSets] = useState<QuestionBankSet[]>([]);
+  const [bankQuestions, setBankQuestions] = useState<QuestionBankQuestion[]>([]);
+  const [selectedBankSet, setSelectedBankSet] = useState<string | null>(null);
+  const [addedSetIds, setAddedSetIds] = useState<string[]>([]);
+
+  // Reset addedSetIds when dialog closes or new test is started
+  React.useEffect(() => {
+    if (!isDialogOpen && !selectedTest) {
+      setAddedSetIds([]);
+    }
+  }, [isDialogOpen, selectedTest]);
+
+  // Remove set from addedSetIds if all its questions are removed from the test
+  React.useEffect(() => {
+    if (bankSets.length === 0) return; // Only run if sets are loaded
+    const subscription = form.watch((value) => {
+      const currentQuestions = value.questions || [];
+      setAddedSetIds(prevAddedSetIds => {
+        return prevAddedSetIds.filter(setId => {
+          const set = bankSets.find(s => s._id === setId);
+          if (!set) return false;
+          return set.questions.some(qid => currentQuestions.some((q: any) => q._id === qid));
+        });
+      });
+    });
+    return () => subscription.unsubscribe();
+  }, [form, bankSets]);
+
+  // Helper to get headers for admin API (reuse from QuestionBank)
+  const getAdminHeaders = () => ({
+    'Content-Type': 'application/json',
+    Authorization: 'Bearer ' + localStorage.getItem('token'),
+    'x-user-email': localStorage.getItem('userEmail') || ''
+  });
+
+  // Fetch sets and questions from the bank
+  React.useEffect(() => {
+    if (isDialogOpen || selectedTest) {
+      const headers = getAdminHeaders();
+      console.log('Fetching sets with headers:', headers);
+      fetch('/api/admin/question-bank/sets', { headers })
+        .then(res => res.json())
+        .then(data => {
+          console.log('Fetched sets:', data);
+          setBankSets(Array.isArray(data) ? data : []);
+        });
+    }
+  }, [isDialogOpen, selectedTest]);
+
+  // When a set is selected, fetch its questions and add them to the test's question list
+  React.useEffect(() => {
+    if (selectedBankSet && !addedSetIds.includes(selectedBankSet)) {
+      fetch(`/api/admin/question-bank/sets/${selectedBankSet}/questions`, { headers: getAdminHeaders() })
+        .then(res => res.json())
+        .then(data => {
+          if (Array.isArray(data)) {
+            // Remove deduplication: always append all questions from the set
+            data.forEach(q => append(q));
+            setAddedSetIds(prev => [...prev, selectedBankSet]);
+            setSelectedBankSet(null);
+          }
+        });
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [selectedBankSet]);
+
   // Replace onSubmit with onValid and onInvalid handlers
   const onValid = (data: TestFormValues) => {
     setSubmitAttempted(false);
-    // Process form data before submission
-    // Ensure correctAnswer is properly formatted based on question type
     const processedData = {
       ...data,
       questions: data.questions.map(q => {
-        if (q.type === 'mcq') {
-          // Ensure correctAnswer is a string for MCQ
-          return { ...q, correctAnswer: q.correctAnswer.toString() };
+        // Always clone: strip _id from each question
+        const { _id, ...qWithoutId } = q as any;
+        if (qWithoutId.type === 'mcq') {
+          return { ...qWithoutId, correctAnswer: qWithoutId.correctAnswer.toString() };
         }
-        return q;
-      })
+        return qWithoutId;
+      }),
     };
     if (selectedTest) {
       updateTestMutation.mutate({ id: selectedTest._id as string, testData: processedData });
@@ -340,14 +419,6 @@ export default function Tests() {
       <div key={index} className="space-y-4 p-4 border rounded-lg bg-white">
         <div className="flex justify-between items-center">
           <h3 className="text-lg font-semibold">Question {index + 1}</h3>
-          <Button
-            type="button"
-            variant="destructive"
-            size="sm"
-            onClick={() => removeQuestion(index)}
-          >
-            Remove Question
-          </Button>
         </div>
 
         <FormField
@@ -450,7 +521,7 @@ export default function Tests() {
                   <FormLabel>Correct Answer</FormLabel>
                   <Select
                     onValueChange={field.onChange}
-                    defaultValue={field.value as string}
+                    defaultValue={field.value?.toString()}
                   >
                     <FormControl>
                       <SelectTrigger>
@@ -459,7 +530,7 @@ export default function Tests() {
                     </FormControl>
                     <SelectContent>
                       {form.watch(`questions.${index}.options`)?.filter(opt => opt !== '').map((option, i) => (
-                        <SelectItem key={i} value={option}>
+                        <SelectItem key={i} value={i.toString()}>
                           {option}
                         </SelectItem>
                       ))}
@@ -726,7 +797,7 @@ public class Main {
               ) : (
                 <div className="space-y-4">
                   {tests && tests.length > 0 ? (
-                    tests.reverse().map((test) => (
+                    [...tests].reverse().map((test) => (
                       <TestItem
                         key={test._id}
                         id={test._id as string}
@@ -1033,6 +1104,28 @@ public class Main {
                     >
                       <Plus className="h-4 w-4 mr-2" /> Add Question
                     </Button>
+                  </div>
+
+                  <div className="mb-4">
+                    <h3 className="font-semibold mb-2">Add Questions from Question Bank</h3>
+                    <div className="flex gap-4">
+                      <label htmlFor="bank-set-select" className="sr-only">Select Question Set</label>
+                      <Select
+                        value={selectedBankSet || ''}
+                        onValueChange={value => setSelectedBankSet(value)}
+                      >
+                        <SelectTrigger className="w-64">
+                          <SelectValue placeholder="Select Set" />
+                        </SelectTrigger>
+                        <SelectContent>
+                          {(Array.isArray(bankSets) ? bankSets : []).map(set => (
+                            <SelectItem key={set._id} value={set._id} disabled={addedSetIds.includes(set._id)}>
+                              {set.name} {addedSetIds.includes(set._id) ? '(Added)' : ''}
+                            </SelectItem>
+                          ))}
+                        </SelectContent>
+                      </Select>
+                    </div>
                   </div>
 
                   <Accordion type="multiple" className="w-full">

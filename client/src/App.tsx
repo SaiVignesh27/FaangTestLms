@@ -23,6 +23,7 @@ import AdminTests from "@/pages/admin/Tests";
 import AdminAssignments from "@/pages/admin/Assignments";
 import AdminLeaderboard from "@/pages/admin/Leaderboard";
 import AdminProfile from "@/pages/admin/Profile";
+import AdminQuestionBank from "@/pages/admin/QuestionBank";
 
 // Student Pages
 import StudentDashboard from "@/pages/student/Dashboard";
@@ -83,6 +84,7 @@ function Router() {
       <Route path="/admin/assignments" component={AdminAssignments} />
       <Route path="/admin/leaderboard" component={AdminLeaderboard} />
       <Route path="/admin/profile" component={AdminProfile} />
+      <Route path="/admin/question-bank" component={AdminQuestionBank} />
 
       {/* Student Routes */}
       <Route path="/student/dashboard" component={StudentDashboard} />

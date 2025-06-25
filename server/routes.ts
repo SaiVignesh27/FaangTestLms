@@ -6,6 +6,8 @@ import bcrypt from "bcrypt";
 import { CircleUser } from "lucide-react";
 import { submitCode, getSubmissionResult, languageIds } from './judge0';
 import { Test, TestSubmission, Assignment, AssignmentSubmission } from './models.ts';
+import { QuestionBankQuestion, QuestionSet } from './models.ts';
+import { ObjectId } from 'mongodb';
 
 // Add authentication middleware
 const authenticateUser = async (req: Request, res: Response, next: Function) => {
@@ -998,8 +1000,27 @@ export async function registerRoutes(app: Express): Promise<Server> {
           return res.status(403).json({ error: 'Access denied' });
       }
       const testData = req.body;
-      const newTest = await mongoStorage.createTest(testData);
-      res.status(201).json(newTest);
+      // Support adding questions from the bank
+      let questions = testData.questions || [];
+      if (Array.isArray(testData.questionBankIds) && testData.questionBankIds.length > 0) {
+        // Fetch questions from the bank and embed their data
+        const bankQuestions = await mongoStorage.listQuestionBankQuestions({ _id: { $in: testData.questionBankIds.map((id: string) => new ObjectId(id)) } });
+        questions = [
+          ...questions,
+          ...bankQuestions.map((q: any) => ({
+            text: q.text,
+            type: q.type,
+            options: q.options,
+            correctAnswer: q.correctAnswer,
+            codeTemplate: q.codeTemplate,
+            validationProgram: q.validationProgram,
+            testCases: q.testCases,
+            points: q.points,
+          }))
+        ];
+      }
+      const createdTest = await mongoStorage.createTest({ ...testData, questions });
+      res.status(201).json(createdTest);
     } catch (error) {
       console.error('Error creating test:', error);
       res.status(500).json({ error: 'Internal server error' });
@@ -2481,6 +2502,55 @@ export async function registerRoutes(app: Express): Promise<Server> {
         details: error instanceof Error ? error.message : 'Unknown error'
       });
     }
+  });
+
+  // Question Bank API (Admin)
+  app.use('/api/admin/question-bank', authenticateUser, async (req: Request, res: Response, next: Function) => {
+    if ((req as any).user?.role !== 'admin') {
+      return res.status(403).json({ error: 'Forbidden' });
+    }
+    next();
+  });
+
+  // Question Sets CRUD
+  app.get('/api/admin/question-bank/sets', authenticateUser, async (req, res) => {
+    const sets = await mongoStorage.listQuestionSets();
+    res.json(sets);
+  });
+  app.post('/api/admin/question-bank/sets', authenticateUser, async (req, res) => {
+    const set = await mongoStorage.createQuestionSet(req.body);
+    res.json(set);
+  });
+  app.put('/api/admin/question-bank/sets/:id', authenticateUser, async (req, res) => {
+    const set = await mongoStorage.updateQuestionSet(req.params.id, req.body);
+    res.json(set);
+  });
+  app.delete('/api/admin/question-bank/sets/:id', authenticateUser, async (req, res) => {
+    const ok = await mongoStorage.deleteQuestionSet(req.params.id);
+    res.json({ success: ok });
+  });
+  app.get('/api/admin/question-bank/sets/:setId/questions', authenticateUser, async (req, res) => {
+    const questions = await mongoStorage.listQuestionsInSet(req.params.setId);
+    res.json(questions);
+  });
+
+  // QuestionBankQuestion CRUD
+  app.get('/api/admin/question-bank/questions', authenticateUser, async (req, res) => {
+    const filter = req.query.setId ? { _id: { $in: req.query.setId } } : {};
+    const questions = await mongoStorage.listQuestionBankQuestions(filter);
+    res.json(questions);
+  });
+  app.post('/api/admin/question-bank/questions', authenticateUser, async (req, res) => {
+    const question = await mongoStorage.createQuestionBankQuestion(req.body);
+    res.json(question);
+  });
+  app.put('/api/admin/question-bank/questions/:id', authenticateUser, async (req, res) => {
+    const question = await mongoStorage.updateQuestionBankQuestion(req.params.id, req.body);
+    res.json(question);
+  });
+  app.delete('/api/admin/question-bank/questions/:id', authenticateUser, async (req, res) => {
+    const ok = await mongoStorage.deleteQuestionBankQuestion(req.params.id);
+    res.json({ success: ok });
   });
 
   const httpServer = createServer(app);
