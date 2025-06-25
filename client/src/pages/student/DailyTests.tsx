@@ -177,7 +177,7 @@ export default function DailyTests() {
               </div>
             ) : pendingTests.length > 0 ? (
               <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-                {pendingTests.map((test, index) => (
+                {pendingTests.reverse().map((test, index) => (
                   <Card 
                     key={test._id} 
                     className="overflow-hidden hover:shadow-lg transition-all duration-300 animate-fadeIn"
