@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { LoginCredentials } from '@shared/types';
 import { loginUser } from '@/lib/auth';
-import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import {
   Card,
@@ -34,7 +33,6 @@ const loginSchema = z.object({
 });
 
 export default function AdminLogin() {
-  const [, navigate] = useLocation();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [shake, setShake] = useState(false);
@@ -54,7 +52,7 @@ export default function AdminLogin() {
         title: 'Login successful',
         description: 'Welcome to the Faang Tech Lab admin portal',
       });
-      navigate('/admin/dashboard');
+      window.location.assign('/admin/dashboard');
     },
     onError: (error: any) => {
       const message =
@@ -194,7 +192,7 @@ export default function AdminLogin() {
             <Button
               variant="link"
               className="ml-2 text-blue-700 hover:text-blue-900 font-medium"
-              onClick={() => navigate('/student/login')}
+              onClick={() => window.location.assign('/student/login')}
             >
               Login here
             </Button>

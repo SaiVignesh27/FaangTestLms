@@ -7,12 +7,13 @@ import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button, ButtonProps } from '@/components/ui/button';
 import { RadioGroup, RadioGroupItem } from '@/components/ui/radio-group';
 import { Label } from '@/components/ui/label';
-import { Loader2, Timer, Maximize2, Minimize2 } from 'lucide-react';
+import { Loader2, Timer, Maximize2, Minimize2, AlertTriangle } from 'lucide-react';
 import { useAuth } from '@/providers/AuthProvider';
 import { apiRequest } from '@/lib/queryClient';
 import CodeEditor from '@/components/editor/CodeEditor';
 import { useToast } from '@/components/ui/use-toast';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from '@/components/ui/dialog';
+import { cn } from '@/lib/utils';
 
 export default function TestView() {
   const { id } = useParams();
@@ -35,6 +36,22 @@ export default function TestView() {
   const [lastSaved, setLastSaved] = useState(Date.now());
   const [navAnimation, setNavAnimation] = useState('');
   const saveTimeout = useRef<NodeJS.Timeout | null>(null);
+  const timeUpSubmitted = useRef(false);
+
+  const [show5MinWarning, setShow5MinWarning] = useState(false);
+  const [hasShown5MinWarning, setHasShown5MinWarning] = useState(false);
+  const [show1MinWarning, setShow1MinWarning] = useState(false);
+  const [hasShown1MinWarning, setHasShown1MinWarning] = useState(false);
+  const [showTimeUpWarning, setShowTimeUpWarning] = useState(false);
+
+  const hasCodeQuestions = test?.questions.some(q => q.type === 'code');
+  const hasNonCodeQuestions = test?.questions.some(q => q.type !== 'code');
+
+  useEffect(() => {
+    if (test && !hasNonCodeQuestions && hasCodeQuestions) {
+      setCurrentSection(2);
+    }
+  }, [test, hasNonCodeQuestions, hasCodeQuestions]);
 
   // Handler for updating answers from CodeEditor
   const handleCodeAnswerChange = (questionIdentifier: string, answer: { code?: string; output?: string; testResults?: any[]; score?: number }) => {
@@ -78,16 +95,44 @@ export default function TestView() {
 
   useEffect(() => {
     if (timeLeft === null) return;
+
     if (timeLeft <= 0) {
-      handleSubmit();
-      return;
+      if (!timeUpSubmitted.current && !isTestSubmitted) {
+        setShowTimeUpWarning(true);
+        timeUpSubmitted.current = true;
+        setTimeout(() => handleSubmit(), 3000);
+      }
+      return; // Stop the timer.
     }
-    const timer = setInterval(() => setTimeLeft(prev => (prev !== null ? prev - 1 : null)), 1000);
+
+    // 5-minute warning
+    if (timeLeft <= 300 && !hasShown5MinWarning) {
+      setShow5MinWarning(true);
+      setHasShown5MinWarning(true);
+    }
+
+    // 1-minute warning
+    if (timeLeft <= 60 && !hasShown1MinWarning) {
+      setShow1MinWarning(true);
+      setHasShown1MinWarning(true);
+    }
+
+    const timer = setInterval(() => {
+      setTimeLeft(prev => (prev !== null ? prev - 1 : null));
+    }, 1000);
+
     return () => clearInterval(timer);
-  }, [timeLeft]);
+  }, [timeLeft, hasShown5MinWarning, hasShown1MinWarning, isTestSubmitted]);
 
   useEffect(() => {
-    localStorage.setItem(`answers-${id}`, JSON.stringify(answers));
+    // Debounce saving to localStorage to avoid performance issues on rapid changes
+    const handler = setTimeout(() => {
+      localStorage.setItem(`answers-${id}`, JSON.stringify(answers));
+    }, 500);
+
+    return () => {
+      clearTimeout(handler);
+    };
   }, [answers, id]);
 
   useEffect(() => {
@@ -264,7 +309,7 @@ export default function TestView() {
   });
 
   const handleSubmit = async () => {
-    if (!test) return;
+    if (!test || isSubmitting || isTestSubmitted) return;
     setValidationError('');
     setIsSubmitting(true);
     try {
@@ -312,20 +357,31 @@ export default function TestView() {
               onValueChange={val => setAnswers((prev: Record<string, string>) => ({ ...prev, [answerKey]: val }))}
               className="space-y-3"
             >
-              {question.options?.map((opt: string, i: number) => (
-                <div 
-                  key={i} 
-                  className="flex items-center space-x-3 p-3 rounded-lg border border-gray-200 hover:border-blue-500 transition-all duration-300 cursor-pointer group hover:scale-[1.02] hover:shadow-md"
-                >
-                  <RadioGroupItem value={opt} id={`q${index}-opt${i}`} className="group-hover:border-blue-500 transition-transform duration-300 group-hover:scale-110" />
-                  <Label 
-                    htmlFor={`q${index}-opt${i}`} 
-                    className="flex-1 cursor-pointer group-hover:text-blue-600 transition-all duration-300"
+              {question.options?.map((opt: string, i: number) => {
+                const isSelected = answers[answerKey] === opt;
+                return (
+                  <Label
+                    key={i}
+                    htmlFor={`q${index}-opt${i}`}
+                    className={cn(
+                      'flex items-center space-x-3 p-3 rounded-lg border transition-all duration-300 cursor-pointer group hover:scale-[1.02] hover:shadow-md hover:border-blue-500',
+                      isSelected
+                        ? 'border-blue-500 ring-2 ring-blue-200 shadow-lg'
+                        : 'border-gray-200'
+                    )}
                   >
-                    {opt}
+                    <RadioGroupItem value={opt} id={`q${index}-opt${i}`} className="transition-transform duration-300 group-hover:scale-110" />
+                    <span
+                      className={cn(
+                        'flex-1 cursor-pointer transition-all duration-300',
+                        isSelected ? 'text-blue-700 font-semibold' : 'group-hover:text-blue-600'
+                      )}
+                    >
+                      {opt}
+                    </span>
                   </Label>
-                </div>
-              ))}
+                );
+              })}
             </RadioGroup>
           </div>
         );
@@ -426,6 +482,49 @@ export default function TestView() {
 
   return (
     <div className="bg-gray-50 w-full min-h-screen p-4">
+      {/* Time Warning Dialogs */}
+      <Dialog open={show5MinWarning} onOpenChange={setShow5MinWarning}>
+        <DialogContent>
+          <DialogHeader className="flex flex-col items-center text-center">
+            <AlertTriangle className="w-12 h-12 text-yellow-500 mb-4" />
+            <DialogTitle className="text-2xl">Time Warning</DialogTitle>
+            <DialogDescription className="text-md mt-2">
+              You have less than 5 minutes remaining. Please review your answers and prepare to submit.
+            </DialogDescription>
+          </DialogHeader>
+          <Button onClick={() => setShow5MinWarning(false)} className="mt-4 w-full">Continue Test</Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={show1MinWarning} onOpenChange={setShow1MinWarning}>
+        <DialogContent>
+          <DialogHeader className="flex flex-col items-center text-center">
+            <AlertTriangle className="w-12 h-12 text-red-500 mb-4" />
+            <DialogTitle className="text-2xl">Final Minute!</DialogTitle>
+            <DialogDescription className="text-md mt-2">
+              You have less than 1 minute remaining. The test will automatically submit when time is up.
+            </DialogDescription>
+          </DialogHeader>
+          <Button onClick={() => setShow1MinWarning(false)} className="mt-4 w-full">Continue Test</Button>
+        </DialogContent>
+      </Dialog>
+
+      <Dialog open={showTimeUpWarning}>
+        <DialogContent>
+          <DialogHeader className="flex flex-col items-center text-center">
+            <Timer className="w-12 h-12 text-red-600 mb-4" />
+            <DialogTitle className="text-2xl">Time's Up!</DialogTitle>
+            <DialogDescription className="text-md mt-2">
+              Your time has expired. Your test will now be submitted automatically.
+            </DialogDescription>
+          </DialogHeader>
+          <Button disabled className="mt-4 w-full">
+            <Loader2 className="mr-2 h-4 w-4 animate-spin" />
+            Submitting...
+          </Button>
+        </DialogContent>
+      </Dialog>
+
       {/* Full Screen Enforcement Modal */}
       <Dialog open={!isFullScreen}>
         <DialogContent>
@@ -457,37 +556,43 @@ export default function TestView() {
           <div className="text-sm font-normal text-gray-500 mt-1">{user?.name}</div>
         </div>
         <div className="flex flex-col md:flex-row items-center gap-6">
-          <div className="flex justify-center gap-3">
-            <Button 
-              variant={currentSection === 1 ? 'default' : 'outline'} 
-              onClick={() => setCurrentSection(1)}
-              className="transition-all duration-300 hover:scale-105 hover:shadow-md"
-            >
-              Section 1
-            </Button>
-            <Button 
-              variant={currentSection === 2 ? 'default' : 'outline'} 
-              onClick={() => setCurrentSection(2)}
-              className="transition-all duration-300 hover:scale-105 hover:shadow-md"
-            >
-              Section 2
-            </Button>
-          </div>
+          {hasCodeQuestions && hasNonCodeQuestions && (
+            <div className="flex justify-center gap-3">
+              <Button
+                variant={currentSection === 1 ? 'default' : 'outline'}
+                onClick={() => setCurrentSection(1)}
+                className="transition-all duration-300 hover:scale-105 hover:shadow-md"
+              >
+                Section 1
+              </Button>
+              <Button
+                variant={currentSection === 2 ? 'default' : 'outline'}
+                onClick={() => setCurrentSection(2)}
+                className="transition-all duration-300 hover:scale-105 hover:shadow-md"
+              >
+                Section 2
+              </Button>
+            </div>
+          )}
           <div className="flex items-center gap-3 text-red-600 font-bold text-lg bg-red-50 px-4 py-2 rounded-lg animate-pulse">
             <Timer className="w-5 h-5" /> {formatTime(timeLeft ?? 0)}
           </div>
-          <Button 
-            disabled={isSubmitting} 
-            onClick={handleSubmit} 
-            className="md:ml-4 transition-all duration-300 hover:scale-105 hover:shadow-lg bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900"
-          >
-            {isSubmitting ? (
-              <span className="flex items-center gap-2">
-                <Loader2 className="w-4 h-4 animate-spin" />
-                Submitting...
-              </span>
-            ) : 'Submit Test'}
-          </Button>
+          {(!(hasCodeQuestions && hasNonCodeQuestions) || currentSection === 2) && (
+            <Button
+              disabled={isSubmitting}
+              onClick={handleSubmit}
+              className="md:ml-4 transition-all duration-300 hover:scale-105 hover:shadow-lg bg-gradient-to-r from-blue-600 to-blue-800 hover:from-blue-700 hover:to-blue-900"
+            >
+              {isSubmitting ? (
+                <span className="flex items-center gap-2">
+                  <Loader2 className="w-4 h-4 animate-spin" />
+                  Submitting...
+                </span>
+              ) : (
+                'Submit Test'
+              )}
+            </Button>
+          )}
           {/* Full Screen Button: Only show when not in full screen */}
           {!isFullScreen && (
             <Button
@@ -541,7 +646,7 @@ export default function TestView() {
                 <Card key={originalIndex} className="mb-4 transition-all duration-300 hover:shadow-xl border-gray-200 animate-fadeIn">
                   <CardHeader className="bg-gradient-to-r from-gray-50 to-white border-b border-gray-200">
                     <CardTitle className="text-lg font-semibold flex items-center gap-2">
-                      <span className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-700 rounded-full text-sm animate-bounce">
+                      <span className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-700 rounded-full text-sm ">
                         {question.questionNumber}
                       </span>
                       Question {question.questionNumber}
@@ -577,7 +682,7 @@ export default function TestView() {
                   {/* Sticky nav & progress */}
                   <CardHeader className="sticky top-0 z-20 bg-gradient-to-r from-gray-50 to-white border-b border-gray-200 rounded-t-xl p-6 flex flex-col md:flex-row justify-between items-center mb-2 gap-2" style={{minHeight:'64px'}}>
                     <div className="flex items-center gap-3">
-                      <span className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-700 rounded-full text-sm animate-bounce">
+                      <span className="w-8 h-8 flex items-center justify-center bg-blue-100 text-blue-700 rounded-full text-sm">
                         {question.questionNumber}
                       </span>
                       <span className="text-lg font-semibold">Question {currentCodeIndex + 1} of {codeQuestions.length}</span>

@@ -5,7 +5,6 @@ import { zodResolver } from '@hookform/resolvers/zod';
 import { useMutation } from '@tanstack/react-query';
 import { LoginCredentials } from '@shared/types';
 import { loginUser } from '@/lib/auth';
-import { useLocation } from 'wouter';
 import { useToast } from '@/hooks/use-toast';
 import {
   Card,
@@ -29,7 +28,6 @@ import { Loader2, GraduationCap, Eye, EyeOff } from 'lucide-react';
 import logo from '../../faangtech .jpg';  // Use the same logo or your student-specific logo
 
 export default function StudentLogin() {
-  const [, navigate] = useLocation();
   const { toast } = useToast();
   const [showPassword, setShowPassword] = useState(false);
   const [shake, setShake] = useState(false);
@@ -54,7 +52,7 @@ export default function StudentLogin() {
         title: 'Login successful',
         description: 'Welcome to Faang Tech Lab',
       });
-      navigate('/student/dashboard');
+      window.location.assign('/student/dashboard');
     },
     onError: (error: any) => {
       const message =
