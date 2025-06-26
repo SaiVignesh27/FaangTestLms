@@ -81,11 +81,6 @@ export default function Leaderboard() {
     }],
   });
 
-  // Filter leaderboard by search query
-  const filteredEntries = leaderboardEntries?.filter(entry => 
-    entry.studentName.toLowerCase().includes(searchQuery.toLowerCase())
-  ) || [];
-
   // Get the title of a test or assignment
   const getItemTitle = (itemId: string) => {
     if (!itemId) return '';
@@ -113,92 +108,116 @@ export default function Leaderboard() {
 
   // Handle export to CSV
   const exportToCSV = () => {
-    if (!leaderboardEntries || leaderboardEntries.length === 0) return;
-    
-    // Get current date and time for filename
+    if (!leaderboardEntries || leaderboardEntries.length === 0) {
+      toast({
+        title: 'Export Canceled',
+        description: 'No data available to export.',
+        variant: 'destructive',
+      });
+      return;
+    }
+  
     const now = new Date();
-    const dateStr = format(now, 'yyyy-MM-dd');
-    const timeStr = format(now, 'HH-mm');
-    
-    // Define headers with more detailed information
+    const dateStr = format(now, "yyyy-MM-dd");
+    const timeStr = format(now, "HH-mm");
+  
+    const filename = `Leaderboard_${dateStr}_${timeStr}.csv`;
+ 
     const headers = [
-      'Rank',
-      'Student Name',
-      'Student ID',
-      'Course',
-      'Content Type',
-      'Item Title',
-      'Score (%)',
-      'Time Spent',
-      'Submission Date',
-      'Status'
+     "Rank",
+     "Student Name",
+     "Student ID",
+     "Course",
+     "Content Type",
+     "Item Title",
+     "Score (%)",
+     "Time Spent",
+     "Submission Date",
+     "Status",
     ];
-    
-    // Process and format the data
-    const csvData = getFilteredEntries().map((entry, index) => {
-      // Determine status based on score
-      const status = entry.score >= 70 ? 'Passed' : 
-                    entry.score >= 50 ? 'Average' : 'Failed';
-      
-      return [
-        (index + 1).toString(),
-        entry.studentName,
-        entry.studentId || 'N/A',
-        getCourseName(entry.courseId || ''),
-        contentType === 'test' ? 'Test' : 'Assignment',
-        getItemTitle(contentType === 'test' ? entry.testId || '' : entry.assignmentId || ''),
-        entry.score.toString(),
-        formatTimeSpent(entry.timeSpent),
-        entry.completedAt ? formatDate(new Date(entry.completedAt)) : 'N/A',
-        status
-      ];
-    });
-    
-    // Add summary statistics
-    const totalEntries = csvData.length;
-    const averageScore = csvData.reduce((acc, row) => acc + parseInt(row[6]), 0) / totalEntries;
-    const passedCount = csvData.filter(row => row[9] === 'Passed').length;
-    const failedCount = csvData.filter(row => row[9] === 'Failed').length;
-    
-    // Create summary rows
-    const summaryRows = [
-      [''],
+  
+   const csvRows = [headers];
+ 
+   const entries = getFilteredEntries();
+ 
+   entries.forEach((entry, index) => {
+     const status =
+       entry.score >= 70 ? "Passed" : entry.score >= 40 ? "Average" : "Failed";
+  
+     const row = [
+       index + 1,
+       entry.studentName,
+       entry.studentId || "N/A",
+       getCourseName(entry.courseId || ""),
+       contentType === "test" ? "Test" : "Assignment",
+       getItemTitle(
+         contentType === "test" ? entry.testId || "" : entry.assignmentId || ""
+       ),
+       entry.score.toFixed(2),
+       formatTimeSpent(entry.timeSpent),
+       entry.completedAt
+         ? format(new Date(entry.completedAt), "yyyy-MM-dd HH:mm")
+         : "N/A",
+       status,
+     ];
+ 
+     const formattedRow = row.map((cell) => {
+       const cellStr = String(cell);
+       return /[",\n]/.test(cellStr) ? `"${cellStr.replace(/"/g, '""')}"` : cellStr;
+     });
+ 
+     csvRows.push(formattedRow);
+   });
+
+   // Add summary statistics if there are entries
+   if (entries.length > 0) {
+    const totalEntries = entries.length;
+    const averageScore = entries.reduce((acc, entry) => acc + entry.score, 0) / totalEntries;
+    const passedCount = entries.filter(entry => entry.score >= 70).length;
+    const failedCount = entries.filter(entry => entry.score < 40).length;
+    const passRate = (passedCount / totalEntries) * 100;
+
+    const summaryRowsData = [
+      [], // Empty row for spacing
       ['Summary Statistics'],
-      ['Total Entries', totalEntries.toString()],
-      ['Average Score', `${averageScore.toFixed(2)}%`],
-      ['Passed', passedCount.toString()],
-      ['Failed', failedCount.toString()],
-      ['Pass Rate', `${((passedCount / totalEntries) * 100).toFixed(2)}%`],
-      [''],
+      ['Total Entries', totalEntries],
+      ['Average Score (%)', averageScore.toFixed(2)],
+      ['Passed', passedCount],
+      ['Failed', failedCount],
+      ['Pass Rate (%)', passRate.toFixed(2)],
+      [], // Empty row
       ['Generated on', format(now, 'MMMM dd, yyyy HH:mm:ss')],
       ['Content Type', contentType === 'test' ? 'Tests' : 'Assignments'],
       ['Course Filter', selectedCourse === 'all' ? 'All Courses' : getCourseName(selectedCourse)],
-      ['Item Filter', selectedItem === 'all' ? 'All Items' : getItemTitle(selectedItem)]
+      ['Item Filter', selectedItem === 'all' ? 'All Items' : getItemTitle(selectedItem)],
     ];
     
-    // Combine all data
-    const csvContent = [
-      headers.join(','),
-      ...csvData.map(row => row.join(',')),
-      ...summaryRows.map(row => row.join(','))
-    ].join('\n');
-    
-    // Create and download the file
-    const blob = new Blob([csvContent], { type: 'text/csv;charset=utf-8;' });
-    const url = URL.createObjectURL(blob);
-    const link = document.createElement('a');
-    link.setAttribute('href', url);
-    link.setAttribute('download', `FaangTechLab-leaderboard-${contentType}-${dateStr}-${timeStr}.csv`);
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
-    // Show success toast
-    toast({
-      title: 'Export Successful',
-      description: `Leaderboard data has been exported to CSV`,
+    summaryRowsData.forEach(row => {
+      const formattedRow = row.map((cell) => {
+        const cellStr = String(cell);
+        return /[",\n]/.test(cellStr) ? `"${cellStr.replace(/"/g, '""')}"` : cellStr;
+      });
+      csvRows.push(formattedRow);
     });
-  };
+  }
+ 
+   const csvContent = csvRows.map((row) => row.join(",")).join("\n");
+   const blob = new Blob([csvContent], { type: "text/csv;charset=utf-8;" });
+ 
+   const link = document.createElement("a");
+   const url = URL.createObjectURL(blob);
+   link.href = url;
+   link.setAttribute("download", filename);
+   document.body.appendChild(link);
+   link.click();
+   document.body.removeChild(link);
+
+   // Show success toast
+   toast({
+     title: 'Export Successful',
+     description: 'Leaderboard data has been exported to CSV.',
+   });
+ };
   
   // Get medal icon based on rank
   const getMedalIcon = (index: number) => {
@@ -233,6 +252,14 @@ export default function Leaderboard() {
         contentType === 'test' ? entry.testId === selectedItem : entry.assignmentId === selectedItem
       );
     }
+
+    // Apply search filter here
+    if (searchQuery.trim() !== '') {
+      filtered = filtered.filter(entry =>
+        entry.studentName.toLowerCase().includes(searchQuery.toLowerCase())
+      );
+    }
+
     return [...filtered].sort((a, b) => b.score - a.score);
   };
 
