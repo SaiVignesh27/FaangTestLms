@@ -65,7 +65,7 @@ const questionSchema = z.object({
   text: z.string().min(1, "Question text is required"),
   type: z.enum(["mcq", "fill", "code"]),
   options: z.array(z.string()).optional(),
-  correctAnswer: z.union([z.string(), z.array(z.string())]),
+  correctAnswer: z.string().optional(),
   codeTemplate: z.string().optional(),
   validationProgram: z.object({
     java: z.string().optional(),
@@ -74,11 +74,48 @@ const questionSchema = z.object({
     javascript: z.string().optional()
   }).optional(),
   testCases: z.array(z.object({
-    input: z.string(),
-    output: z.string(),
+    input: z.string().min(1, 'Test case input cannot be empty.'),
+    output: z.string().min(1, 'Test case output cannot be empty.'),
     description: z.string().optional()
   })).optional(),
-  points: z.number().default(1),
+  points: z.coerce.number().min(1, "Points must be at least 1").default(1),
+}).superRefine((data, ctx) => {
+  switch (data.type) {
+    case 'mcq':
+      if (!data.options || data.options.filter(opt => opt.trim() !== '').length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'At least two non-empty options are required.',
+          path: ['options'],
+        });
+      }
+      if (!data.correctAnswer || data.correctAnswer.trim() === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'A correct answer must be selected.',
+          path: ['correctAnswer'],
+        });
+      }
+      break;
+    case 'fill':
+      if (!data.correctAnswer || data.correctAnswer.trim() === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Correct answer is required and cannot be empty.',
+          path: ['correctAnswer'],
+        });
+      }
+      break;
+    case 'code':
+      if (!data.testCases || data.testCases.length < 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'At least one test case is required for code questions.',
+          path: ['testCases'],
+        });
+      }
+      break;
+  }
 });
 
 const testFormSchema = z.object({
@@ -145,15 +182,7 @@ export default function Tests() {
       description: '',
       courseId: '',
       classId: '',
-      questions: [
-        {
-          text: '',
-          type: 'mcq',
-          options: ['', '', '', ''],
-          correctAnswer: '',
-          points: 1,
-        },
-      ],
+      questions: [],
       visibility: 'public',
       assignedTo: [],
       timeLimit: 30,
@@ -181,7 +210,10 @@ export default function Tests() {
         description: selectedTest.description || '',
         courseId: selectedTest.courseId,
         classId: selectedTest.classId || '',
-        questions: selectedTest.questions,
+        questions: selectedTest.questions.map(q => ({
+          ...q,
+          correctAnswer: typeof q.correctAnswer === 'string' ? q.correctAnswer : Array.isArray(q.correctAnswer) ? (q.correctAnswer[0] ? String(q.correctAnswer[0]) : '') : '',
+        })),
         visibility: selectedTest.visibility,
         assignedTo: selectedTest.assignedTo || [],
         timeLimit: selectedTest.timeLimit || 30,
@@ -193,15 +225,7 @@ export default function Tests() {
         description: '',
         courseId: '',
         classId: '',
-        questions: [
-          {
-            text: '',
-            type: 'mcq',
-            options: ['', '', '', ''],
-            correctAnswer: '',
-            points: 1,
-          },
-        ],
+        questions: [],
         visibility: 'public',
         assignedTo: [],
         timeLimit: 30,
@@ -348,7 +372,10 @@ export default function Tests() {
         .then(data => {
           if (Array.isArray(data)) {
             // Remove deduplication: always append all questions from the set
-            data.forEach(q => append(q));
+            data.forEach(q => append({
+              ...q,
+              correctAnswer: typeof q.correctAnswer === 'string' ? q.correctAnswer : Array.isArray(q.correctAnswer) ? (q.correctAnswer[0] ? String(q.correctAnswer[0]) : '') : '',
+            }));
             setAddedSetIds(prev => [...prev, selectedBankSet]);
             setSelectedBankSet(null);
           }
@@ -360,6 +387,18 @@ export default function Tests() {
   // Replace onSubmit with onValid and onInvalid handlers
   const onValid = (data: TestFormValues) => {
     setSubmitAttempted(false);
+    // Extra check for MCQ correctAnswer
+    const invalidMCQ = data.questions.find(
+      q => q.type === 'mcq' && (!q.correctAnswer || q.correctAnswer.trim() === '')
+    );
+    if (invalidMCQ) {
+      toast({
+        title: 'Error',
+        description: 'All MCQ questions must have a correct answer selected.',
+        variant: 'destructive',
+      });
+      return;
+    }
     const processedData = {
       ...data,
       questions: data.questions.map(q => {
@@ -471,11 +510,14 @@ export default function Tests() {
               name={`questions.${index}.options`}
               render={({ field }) => (
                 <FormItem>
-                  <FormLabel>Options</FormLabel>
+                  <FormLabel>
+                    Options <span className="text-red-500">*</span>
+                  </FormLabel>
+                  <FormDescription>At least two options are required.</FormDescription>
                   <FormControl>
                     <div className="space-y-2">
                       {field.value?.map((option, optionIndex) => (
-                        <div key={optionIndex} className="flex gap-2">
+                        <div key={optionIndex} className="flex gap-2 items-center">
                           <Input
                             value={option}
                             onChange={(e) => {
@@ -484,15 +526,19 @@ export default function Tests() {
                               field.onChange(newOptions);
                             }}
                             placeholder={`Option ${optionIndex + 1}`}
+                            required
                           />
                           <Button
                             type="button"
                             variant="destructive"
                             size="sm"
+                            disabled={(field.value || []).filter(opt => opt.trim() !== '').length <= 2}
                             onClick={() => {
-                              const newOptions = [...(field.value || [])];
-                              newOptions.splice(optionIndex, 1);
-                              field.onChange(newOptions);
+                              if ((field.value || []).filter(opt => opt.trim() !== '').length > 2) {
+                                const newOptions = [...(field.value || [])];
+                                newOptions.splice(optionIndex, 1);
+                                field.onChange(newOptions);
+                              }
                             }}
                           >
                             Remove
@@ -504,8 +550,10 @@ export default function Tests() {
                         variant="outline"
                         size="sm"
                         onClick={() => {
+                          if ((field.value || []).filter(opt => opt.trim() !== '').length >= 10) return;
                           field.onChange([...(field.value || []), ""]);
                         }}
+                        disabled={(field.value || []).filter(opt => opt.trim() !== '').length >= 10}
                       >
                         Add Option
                       </Button>
@@ -519,29 +567,37 @@ export default function Tests() {
             <FormField
               control={form.control}
               name={`questions.${index}.correctAnswer`}
-              render={({ field }) => (
-                <FormItem>
-                  <FormLabel>Correct Answer</FormLabel>
-                  <Select
-                    onValueChange={field.onChange}
-                    defaultValue={field.value?.toString()}
-                  >
-                    <FormControl>
-                      <SelectTrigger>
-                        <SelectValue placeholder="Select correct answer" />
-                      </SelectTrigger>
-                    </FormControl>
-                    <SelectContent>
-                      {form.watch(`questions.${index}.options`)?.filter(opt => opt !== '').map((option, i) => (
-                        <SelectItem key={i} value={i.toString()}>
-                          {option}
-                        </SelectItem>
-                      ))}
-                    </SelectContent>
-                  </Select>
-                  <FormMessage />
-                </FormItem>
-              )}
+              render={({ field }) => {
+                const options = form.watch(`questions.${index}.options`)?.filter(opt => opt.trim() !== '');
+                const canSelect = options && options.length >= 2;
+                return (
+                  <FormItem>
+                    <FormLabel>
+                      Correct Answer <span className="text-red-500">*</span>
+                    </FormLabel>
+                    <FormDescription>Select the correct answer for this question.</FormDescription>
+                    <Select
+                      onValueChange={field.onChange}
+                      value={field.value?.toString()}
+                      disabled={!canSelect}
+                    >
+                      <FormControl>
+                        <SelectTrigger>
+                          <SelectValue placeholder={canSelect ? "Select correct answer" : "Add at least two options first"} />
+                        </SelectTrigger>
+                      </FormControl>
+                      <SelectContent>
+                        {options?.map((option, i) => (
+                          <SelectItem key={i} value={i.toString()}>
+                            {option}
+                          </SelectItem>
+                        ))}
+                      </SelectContent>
+                    </Select>
+                    <FormMessage />
+                  </FormItem>
+                );
+              }}
             />
           </>
         )}
@@ -706,13 +762,17 @@ export default function Tests() {
           name={`questions.${index}.points`}
           render={({ field }) => (
             <FormItem>
-              <FormLabel>Points</FormLabel>
+              <FormLabel>
+                Points <span className="text-red-500">*</span>
+              </FormLabel>
+              <FormDescription>Points must be at least 1.</FormDescription>
               <FormControl>
                 <Input
                   type="number"
                   {...field}
                   onChange={(e) => field.onChange(Number(e.target.value))}
                   min={1}
+                  required
                 />
               </FormControl>
               <FormMessage />
@@ -1082,6 +1142,12 @@ public class Main {
                     </div>
                   </div>
 
+                  {fields.length === 0 && (
+                    <div className="text-center text-gray-500 dark:text-gray-400 py-8">
+                      No questions yet. Click "Add Question" or import from the Question Bank.
+                    </div>
+                  )}
+
                   <Accordion type="multiple" className="w-full">
                     {fields.map((field, index) => (
                       <AccordionItem 
@@ -1117,6 +1183,13 @@ public class Main {
                       </AccordionItem>
                     ))}
                   </Accordion>
+
+                  {/* Add Question button at the bottom */}
+                  <div className="mt-4 flex justify-end">
+                    <Button type="button" onClick={addQuestion} variant="outline">
+                      <Plus className="h-4 w-4 mr-2" /> Add Question
+                    </Button>
+                  </div>
                 </TabsContent>
               </Tabs>
             </form>

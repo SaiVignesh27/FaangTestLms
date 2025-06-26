@@ -220,24 +220,20 @@ export default function TestView() {
                 answer: JSON.stringify({ ...parsedAnswer, testCasesPassed, testCasesTotal, points }),
                 isCorrect,
                 points,
-                feedback,
-                correctAnswer: question.correctAnswer
+                feedback
               };
             }
             // Fallback: old logic if testResults missing
             const output = parsedAnswer.output || '';
             const code = parsedAnswer.code || '';
-            const outputStr = typeof output === 'string' ? output.trim() : '';
-            const correctAnswerStr = typeof correctAnswer === 'string' ? correctAnswer.trim() : '';
-            const isCorrect = outputStr === correctAnswerStr;
-            feedback = isCorrect ? 'Correct output' : `Incorrect output. Expected: ${correctAnswer}`;
+            const isCorrect = false;
+            feedback = 'No code submitted or not executed. No test cases run.';
             return {
               questionId: answerKey,
               answer: JSON.stringify({ code, output }),
               isCorrect,
-              points: isCorrect ? (question.points || 1) : 0,
-              feedback,
-              correctAnswer: question.correctAnswer
+              points: 0,
+              feedback
             };
           } catch {
             feedback = 'Invalid code answer format';
@@ -246,8 +242,7 @@ export default function TestView() {
               answer: studentAnswer,
               isCorrect: false,
               points: 0,
-              feedback,
-              correctAnswer: question.correctAnswer
+              feedback
             };
           }
         }
@@ -257,8 +252,7 @@ export default function TestView() {
           answer: processedAnswer,
           isCorrect,
           points: isCorrect ? (question.points || 1) : 0,
-          feedback,
-          correctAnswer: question.type === 'mcq' ? question.options?.[parseInt(correctAnswer.toString())] || correctAnswer : correctAnswer
+          feedback
         };
       });
 

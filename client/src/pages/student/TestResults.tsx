@@ -301,42 +301,51 @@ export default function TestResults() {
                       <div className="space-y-3">
                         <p className="font-medium text-gray-700 dark:text-gray-300">Options:</p>
                         <ul className="space-y-2">
-                          {question.options?.map((option: string, optIndex: number) => (
-                            <li 
-                              key={optIndex} 
-                              className={`p-3 rounded-lg transition-all duration-300 ${
-                                option === answer?.answer 
-                                  ? (isCorrect 
-                                      ? 'bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800' 
-                                      : 'bg-red-100 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800')
-                                  : (question.correctAnswer === option && !isCorrect
-                                      ? 'bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800'
-                                      : 'bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700')
-                              }`}
-                            >
-                              <div className="flex items-center justify-between">
-                                <span className={`
-                                  ${option === answer?.answer 
-                                    ? (isCorrect ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300')
-                                    : (question.correctAnswer === option && !isCorrect ? 'text-green-700 dark:text-green-300' : '')
-                                  }
-                                `}>
-                                  {option}
-                                </span>
-                                <div className="flex items-center gap-2">
-                                  {option === answer?.answer ? (
-                                    <span className={`text-sm ${isCorrect ? 'text-green-600' : 'text-red-600'}`}>
-                                      {isCorrect ? '✓ Your Answer' : '✗ Your Answer'}
-                                    </span>
-                                  ) : (
-                                    question.correctAnswer === option && !isCorrect && (
+                          {(() => {
+                            const correctAnswerIndex = Number(question.correctAnswer);
+                            const correctAnswerValue = Array.isArray(question.options) && !isNaN(correctAnswerIndex)
+                              ? question.options[correctAnswerIndex]
+                              : question.correctAnswer;
+                            return question.options?.map((option: string, optIndex: number) => {
+                              const isUserAnswer = option === answer?.answer;
+                              const isCorrectAnswer = option === correctAnswerValue;
+                              const isUserWrong = isUserAnswer && !isCorrect;
+                              return (
+                                <li
+                                  key={optIndex}
+                                  className={`p-3 rounded-lg transition-all duration-300 ${
+                                    isUserAnswer
+                                      ? (isCorrect
+                                          ? 'bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800'
+                                          : 'bg-red-100 dark:bg-red-900/20 border-2 border-red-200 dark:border-red-800')
+                                      : (isCorrectAnswer && !isCorrect
+                                          ? 'bg-green-100 dark:bg-green-900/20 border-2 border-green-200 dark:border-green-800'
+                                          : 'bg-gray-50 dark:bg-gray-800/50 border border-gray-200 dark:border-gray-700')
+                                  }`}
+                                >
+                                  <span className={`
+                                    ${isUserAnswer
+                                      ? (isCorrect ? 'text-green-700 dark:text-green-300' : 'text-red-700 dark:text-red-300')
+                                      : (isCorrectAnswer && !isCorrect ? 'text-green-700 dark:text-green-300' : '')
+                                    }
+                                  `}>
+                                    {option}
+                                  </span>
+                                  <div className="flex items-center gap-2">
+                                    {isUserAnswer && isCorrect && (
+                                      <span className="text-sm text-green-600">✓ Your Answer</span>
+                                    )}
+                                    {isUserWrong && (
+                                      <span className="text-sm text-red-600">✗ Your Answer</span>
+                                    )}
+                                    {isCorrectAnswer && !isCorrect && !isUserAnswer && (
                                       <span className="text-sm text-green-600">✓ Correct Answer</span>
-                                    )
-                                  )}
-                                </div>
-                              </div>
-                            </li>
-                          ))}
+                                    )}
+                                  </div>
+                                </li>
+                              );
+                            });
+                          })()}
                         </ul>
                       </div>
                     )}

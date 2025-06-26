@@ -73,8 +73,8 @@ const validateAnswer = (question: any, answer: any): boolean => {
       return studentAnswer === correctAnswer;
     
     case 'code':
-      // For code questions, compare the output with the correct answer
-      return String(question.correctAnswer).toLowerCase().trim() === String(answer).toLowerCase().trim();
+      // For code questions, validation should be based on test cases, not correctAnswer
+      return false;
     
     default:
       return false;
