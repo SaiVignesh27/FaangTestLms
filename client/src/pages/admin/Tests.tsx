@@ -158,6 +158,8 @@ export default function Tests() {
   const [selectedTest, setSelectedTest] = useState<Test | null>(null);
   const [submitAttempted, setSubmitAttempted] = useState(false);
   const [currentTab, setCurrentTab] = useState('details');
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCourse, setFilterCourse] = useState<string>('all');
 
   // Fetch tests
   const { data: tests, isLoading: isLoadingTests } = useQuery<Test[]>({
@@ -820,6 +822,16 @@ public class Main {
     }
   };
 
+  // Filtered tests
+  const filteredTests = React.useMemo(() => {
+    if (!tests) return [];
+    return tests.filter(test => {
+      const searchMatch = test.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const courseMatch = filterCourse === 'all' || test.courseId === filterCourse;
+      return searchMatch && courseMatch;
+    });
+  }, [tests, searchTerm, filterCourse]);
+
   return (
     <AdminLayout>
       <div className="min-h-screen bg-gray-50 dark:bg-gray-900">
@@ -847,6 +859,34 @@ public class Main {
 
         {/* Main Content */}
         <div className="container mx-auto px-4 py-6">
+          {/* Filter Controls */}
+          <Card className="p-4 sm:p-6 bg-white dark:bg-gray-800/50 rounded-xl shadow-md border dark:border-gray-700 mb-6">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+              <div className="space-y-2">
+                <Label>Search by Test Name</Label>
+                <Input
+                  placeholder="e.g. JavaScript Arrays"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-white dark:bg-gray-800"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Course</Label>
+                <Select value={filterCourse} onValueChange={v => setFilterCourse(v || 'all')}>
+                  <SelectTrigger className="bg-white dark:bg-gray-800">
+                    <SelectValue placeholder="Select a course" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Courses</SelectItem>
+                    {courses?.map(course => (
+                      <SelectItem key={String(course._id)} value={String(course._id)}>{course.title}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </Card>
           <Card className="shadow-lg border-gray-200 dark:border-gray-700 transition-all duration-200 hover:shadow-xl">
             <CardHeader className="bg-gradient-to-r from-gray-50 to-white dark:from-gray-800 dark:to-gray-900 border-b border-gray-200 dark:border-gray-700">
               <CardTitle className="text-xl font-semibold text-gray-900 dark:text-white">Tests</CardTitle>
@@ -859,8 +899,8 @@ public class Main {
                 </div>
               ) : (
                 <div className="space-y-4">
-                  {tests && tests.length > 0 ? (
-                    [...tests].reverse().map((test) => (
+                  {filteredTests && filteredTests.length > 0 ? (
+                    [...filteredTests].reverse().map((test) => (
                       <TestItem
                         key={test._id}
                         id={test._id as string}
@@ -1029,8 +1069,8 @@ public class Main {
                               ) : courses && courses.length > 0 ? (
                                 courses.map((course) => (
                                   <SelectItem 
-                                    key={course._id} 
-                                    value={course._id as string}
+                                    key={String(course._id)} 
+                                    value={String(course._id)}
                                     className="cursor-pointer transition-colors duration-200"
                                   >
                                     {course.title}
