@@ -25,7 +25,7 @@ const questionSchema = z.object({
   text: z.string().min(1, 'Question text is required'),
   type: z.enum(['mcq', 'fill', 'code']),
   options: z.array(z.string()).optional(),
-  correctAnswer: z.union([z.string(), z.array(z.string())]),
+  correctAnswer: z.string().optional(),
   codeTemplate: z.string().optional(),
   validationProgram: z.object({
     java: z.string().optional(),
@@ -34,12 +34,49 @@ const questionSchema = z.object({
     javascript: z.string().optional()
   }).optional(),
   testCases: z.array(z.object({
-    input: z.string(),
-    output: z.string(),
+    input: z.string().min(1, 'Test case input cannot be empty.'),
+    output: z.string().min(1, 'Test case output cannot be empty.'),
     description: z.string().optional()
   })).optional(),
-  points: z.number().default(1),
+  points: z.coerce.number().min(1, "Points must be at least 1").default(1),
   _id: z.string().optional(),
+}).superRefine((data, ctx) => {
+  switch (data.type) {
+    case 'mcq':
+      if (!data.options || data.options.filter(opt => opt.trim() !== '').length < 2) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'At least two non-empty options are required.',
+          path: ['options'],
+        });
+      }
+      if (data.correctAnswer === undefined || data.correctAnswer === null || data.correctAnswer === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'A correct answer must be selected.',
+          path: ['correctAnswer'],
+        });
+      }
+      break;
+    case 'fill':
+      if (!data.correctAnswer || data.correctAnswer.trim() === '') {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'Correct answer is required and cannot be empty.',
+          path: ['correctAnswer'],
+        });
+      }
+      break;
+    case 'code':
+      if (!data.testCases || data.testCases.length < 1) {
+        ctx.addIssue({
+          code: z.ZodIssueCode.custom,
+          message: 'At least one test case is required for code questions.',
+          path: ['testCases'],
+        });
+      }
+      break;
+  }
 });
 
 const setFormSchema = z.object({
@@ -284,7 +321,7 @@ export default function QuestionBank() {
         </div>
       </div>
       {/* Main Content Card Grid */}
-      <div className="container mx-auto px-4 py-6 flex gap-8 min-h-[70vh]">
+      <div className="container mx-auto px-4 py-6 flex gap-8">
         {/* Sets List Card */}
         <div className="w-1/3">
           <div className="rounded-xl shadow-lg bg-white dark:bg-gray-800 border border-gray-200 dark:border-gray-700 p-0 transition-shadow duration-200 hover:shadow-2xl">
@@ -368,7 +405,6 @@ export default function QuestionBank() {
                         </Tooltip>
                       </TooltipProvider>
                     </div>
-                    <Button type="button" onClick={addQuestion} variant="outline"><Plus className="h-4 w-4 mr-2" /> Add Question</Button>
                   </div>
                   <Accordion type="multiple" className="w-full transition-all duration-200">
                     {fields.length === 0 && <div className="text-gray-500 text-center py-8">No questions in this set yet.</div>}
@@ -385,7 +421,14 @@ export default function QuestionBank() {
                         <AccordionContent className="transition-all duration-200">
                           <div className="space-y-4 p-4 border-t bg-white dark:bg-gray-800 rounded-b-lg">
                             <div className="flex justify-end">
-                              <Button type="button" onClick={() => removeQuestionFromSet(index)} variant="ghost" size="sm" className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-200"><Minus className="h-4 w-4 mr-1" /> Remove</Button>
+                              <Button type="button" 
+                              onClick={() => removeQuestionFromSet(index)} 
+                              variant="ghost" 
+                              size="sm" 
+                              className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-200">
+                                <Minus className="h-4 w-4 mr-1" /> 
+                                Remove
+                                </Button>
                             </div>
                             <FormField
                               control={form.control}
@@ -448,15 +491,15 @@ export default function QuestionBank() {
                                                 placeholder={`Option ${optionIndex + 1}`}
                                               />
                                               <Button
-                                                type="button"
-                                                variant="destructive"
-                                                size="sm"
                                                 onClick={() => {
                                                   const newOptions = [...(field.value || [])];
                                                   newOptions.splice(optionIndex, 1);
                                                   field.onChange(newOptions);
                                                 }}
-                                              >
+                                                variant="ghost" 
+                                                size="sm" 
+                                                className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-200"
+                                                >
                                                 Remove
                                               </Button>
                                             </div>
@@ -563,16 +606,16 @@ export default function QuestionBank() {
                                             <div key={testCaseIndex} className="space-y-2 p-4 border rounded-lg">
                                               <div className="flex justify-between items-center">
                                                 <h4 className="font-medium">Test Case {testCaseIndex + 1}</h4>
-                                                <Button
-                                                  type="button"
-                                                  variant="destructive"
-                                                  size="sm"
+                                                <Button type="button" 
                                                   onClick={() => {
                                                     const newTestCases = [...(field.value || [])];
                                                     newTestCases.splice(testCaseIndex, 1);
                                                     field.onChange(newTestCases);
-                                                  }}
-                                                >
+                                                  }} 
+                                                  variant="ghost" 
+                                                  size="sm" 
+                                                  className="text-red-500 hover:text-red-700 dark:text-red-400 dark:hover:text-red-300 transition-colors duration-200">
+                                                  <Minus className="h-4 w-4 mr-1" /> 
                                                   Remove
                                                 </Button>
                                               </div>
@@ -630,7 +673,12 @@ export default function QuestionBank() {
                                 <FormItem>
                                   <FormLabel>Points</FormLabel>
                                   <FormControl>
-                                    <Input type="number" min={1} {...field} />
+                                    <Input 
+                                      type="number" 
+                                      min={1} 
+                                      {...field} 
+                                      onChange={e => field.onChange(parseInt(e.target.value, 10))}
+                                    />
                                   </FormControl>
                                   <FormMessage />
                                 </FormItem>
@@ -641,6 +689,11 @@ export default function QuestionBank() {
                       </AccordionItem>
                     ))}
                   </Accordion>
+                  <div className="mt-4 flex justify-end">
+                    <Button type="button" onClick={addQuestion} variant="outline">
+                      <Plus className="h-4 w-4 mr-2" /> Add Question
+                    </Button>
+                  </div>
                   <div className="flex gap-2 mt-8">
                     <Button type="submit" className="w-full">{editingSet ? 'Update Module' : 'Create Module'}</Button>
                     {editingSet && <Button type="button" variant="ghost" className="w-full" onClick={() => { setEditingSet(null); form.reset(); }}>Cancel</Button>}

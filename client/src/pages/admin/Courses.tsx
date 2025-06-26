@@ -51,7 +51,6 @@ const courseFormSchema = z.object({
   title: z.string().min(1, "Title is required"),
   description: z.string().optional(),
   category: z.string().optional(),
-  image: z.string().optional(),
   visibility: z.enum(["public", "private", "restricted"]),
   assignedTo: z.array(z.string()).optional(),
   instructor: z.object({
@@ -72,6 +71,9 @@ export default function Courses() {
   const queryClient = useQueryClient();
   const [isDialogOpen, setIsDialogOpen] = useState(false);
   const [selectedCourse, setSelectedCourse] = useState<Course | null>(null);
+  const [searchTerm, setSearchTerm] = useState('');
+  const [filterCategory, setFilterCategory] = useState('all');
+  const [filterSkillLevel, setFilterSkillLevel] = useState('all');
 
   // Fetch courses
   const { data: courses, isLoading: isLoadingCourses } = useQuery<Course[]>({
@@ -83,6 +85,22 @@ export default function Courses() {
     queryKey: ['/api/admin/users', { role: 'student' }],
   });
 
+  const categoryOptions = React.useMemo(() => {
+    if (!courses) return [];
+    const categories = new Set(courses.map(c => c.category || '').filter(Boolean));
+    return ['all', ...Array.from(categories)];
+  }, [courses]);
+
+  const filteredCourses = React.useMemo(() => {
+    if (!courses) return [];
+    return courses.filter(course => {
+      const searchMatch = course.title.toLowerCase().includes(searchTerm.toLowerCase());
+      const categoryMatch = filterCategory === 'all' || course.category === filterCategory;
+      const skillLevelMatch = filterSkillLevel === 'all' || course.skillLevel === filterSkillLevel;
+      return searchMatch && categoryMatch && skillLevelMatch;
+    });
+  }, [courses, searchTerm, filterCategory, filterSkillLevel]);
+
   // Setup form with validation
   const form = useForm<CourseFormValues>({
     resolver: zodResolver(courseFormSchema),
@@ -90,7 +108,6 @@ export default function Courses() {
       title: '',
       description: '',
       category: '',
-      image: '',
       visibility: 'public',
       assignedTo: [],
       instructor: {
@@ -112,7 +129,6 @@ export default function Courses() {
         title: selectedCourse.title,
         description: selectedCourse.description || '',
         category: selectedCourse.category || '',
-        image: selectedCourse.image || '',
         visibility: selectedCourse.visibility,
         assignedTo: selectedCourse.assignedTo || [],
         instructor: selectedCourse.instructor || { name: '', title: '', initials: '' },
@@ -126,7 +142,6 @@ export default function Courses() {
         title: '',
         description: '',
         category: '',
-        image: '',
         visibility: 'public',
         assignedTo: [],
         instructor: {
@@ -232,7 +247,8 @@ export default function Courses() {
   const getInstructorDetails = (course: Course) => {
     return {
       name: course.instructor?.name || 'Unknown Instructor',
-      initials: course.instructor?.initials || 'UI'
+      initials: course.instructor?.initials || 'UI',
+      title: course.instructor?.title
     };
   };
 
@@ -263,14 +279,54 @@ export default function Courses() {
 
         {/* Main Content */}
         <div className="container mx-auto px-4 py-6 space-y-6">
+          <Card className="p-4 sm:p-6 bg-white dark:bg-gray-800/50 rounded-xl shadow-md border dark:border-gray-700">
+            <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4 items-end">
+              <div className="space-y-2">
+                <Label>Search by Title</Label>
+                <Input
+                  placeholder="e.g. React Hooks"
+                  value={searchTerm}
+                  onChange={(e) => setSearchTerm(e.target.value)}
+                  className="bg-white dark:bg-gray-800"
+                />
+              </div>
+              <div className="space-y-2">
+                <Label>Category</Label>
+                <Select value={filterCategory} onValueChange={setFilterCategory}>
+                  <SelectTrigger className="bg-white dark:bg-gray-800">
+                    <SelectValue placeholder="Select a category" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    {categoryOptions.map(cat => (
+                      <SelectItem key={cat} value={cat} className="capitalize">{cat === 'all' ? 'All Categories' : cat}</SelectItem>
+                    ))}
+                  </SelectContent>
+                </Select>
+              </div>
+              <div className="space-y-2">
+                <Label>Skill Level</Label>
+                <Select value={filterSkillLevel} onValueChange={setFilterSkillLevel}>
+                  <SelectTrigger className="bg-white dark:bg-gray-800">
+                    <SelectValue placeholder="Select a skill level" />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="all">All Levels</SelectItem>
+                    <SelectItem value="beginner">Beginner</SelectItem>
+                    <SelectItem value="intermediate">Intermediate</SelectItem>
+                    <SelectItem value="advanced">Advanced</SelectItem>
+                  </SelectContent>
+                </Select>
+              </div>
+            </div>
+          </Card>
           {isLoadingCourses ? (
             <div className="flex justify-center py-12">
               <Loader2 className="h-8 w-8 animate-spin text-primary" />
             </div>
           ) : (
             <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-              {courses && courses.length > 0 ? (
-                courses.map((course) => (
+              {filteredCourses && filteredCourses.length > 0 ? (
+                filteredCourses.map((course) => (
                   <div key={course._id} className="relative group transition-all duration-200 hover:scale-[1.02]">
                     <CourseCard
                       id={course._id as string}
@@ -281,7 +337,8 @@ export default function Courses() {
                       students={(course.assignedTo?.length || 0)}
                       instructor={getInstructorDetails(course)}
                       rating={4.8}
-                      imageUrl={course.image || 'https://images.unsplash.com/photo-1522202176988-66273c2fd55f?ixlib=rb-4.0.3&auto=format&fit=crop&w=600&h=300'}
+                      skillLevel={course.skillLevel}
+                      duration={course.duration}
                     />
                     <div className="absolute inset-0 bg-black bg-opacity-0 group-hover:bg-opacity-10 transition-all duration-200 flex items-center justify-center opacity-0 group-hover:opacity-100 rounded-lg">
                       <Button 
@@ -304,15 +361,8 @@ export default function Courses() {
               ) : (
                 <div className="col-span-full flex flex-col items-center justify-center py-12 text-gray-500 dark:text-gray-400">
                   <School className="h-12 w-12 mb-4 opacity-20" />
-                  <h3 className="text-lg font-medium">No clusters found</h3>
-                  <p className="text-sm">Create your first cluster to get started</p>
-                  <Button 
-                    variant="outline" 
-                    className="mt-4 shadow-sm hover:shadow-md transition-shadow"
-                    onClick={() => setIsDialogOpen(true)}
-                  >
-                    <Plus className="mr-2 h-4 w-4" /> Create Cluster
-                  </Button>
+                  <h3 className="text-lg font-medium">No matching clusters found</h3>
+                  <p className="text-sm">Try adjusting your filters or create a new cluster</p>
                 </div>
               )}
             </div>
@@ -377,7 +427,7 @@ export default function Courses() {
                   </FormItem>
                 )}
               />
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+              <div className="grid grid-cols-1 md:grid-cols-1 gap-4">
                 <FormField
                   control={form.control}
                   name="category"
@@ -387,24 +437,6 @@ export default function Courses() {
                       <FormControl>
                         <Input 
                           placeholder="JavaScript" 
-                          {...field} 
-                          value={field.value || ''}
-                          className="focus-visible:ring-blue-500"
-                        />
-                      </FormControl>
-                      <FormMessage />
-                    </FormItem>
-                  )}
-                />
-                <FormField
-                  control={form.control}
-                  name="image"
-                  render={({ field }) => (
-                    <FormItem>
-                      <FormLabel className="text-sm font-medium">Image URL</FormLabel>
-                      <FormControl>
-                        <Input 
-                          placeholder="https://example.com/image.jpg" 
                           {...field} 
                           value={field.value || ''}
                           className="focus-visible:ring-blue-500"

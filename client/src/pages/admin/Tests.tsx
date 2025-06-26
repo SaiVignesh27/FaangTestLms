@@ -941,7 +941,7 @@ public class Main {
                       </FormItem>
                     )}
                   />
-                  <div className="grid grid-cols-2 gap-4">
+                  <div className="gap-4">
                     <FormField
                       control={form.control}
                       name="courseId"
@@ -979,55 +979,6 @@ public class Main {
                               ) : (
                                 <div className="px-2 py-1 text-sm text-gray-500 dark:text-gray-400">
                                   No courses available
-                                </div>
-                              )}
-                            </SelectContent>
-                          </Select>
-                          <FormMessage />
-                        </FormItem>
-                      )}
-                    />
-                    <FormField
-                      control={form.control}
-                      name="classId"
-                      render={({ field }) => (
-                        <FormItem>
-                          <FormLabel className="text-sm font-medium">Class (Optional)</FormLabel>
-                          <Select 
-                            onValueChange={field.onChange} 
-                            defaultValue={field.value}
-                            value={field.value}
-                            disabled={!selectedCourseId}
-                          >
-                            <FormControl>
-                              <SelectTrigger className="focus-visible:ring-blue-500 transition-colors duration-200">
-                                <SelectValue placeholder={selectedCourseId ? "Select a class" : "Select a cluster first"} />
-                              </SelectTrigger>
-                            </FormControl>
-                            <SelectContent>
-                              <SelectItem 
-                                value="none"
-                                className="cursor-pointer transition-colors duration-200"
-                              >
-                                None (General test)
-                              </SelectItem>
-                              {isLoadingClasses ? (
-                                <div className="flex justify-center py-2">
-                                  <Loader2 className="h-4 w-4 animate-spin" />
-                                </div>
-                              ) : classes && classes.length > 0 ? (
-                                classes.map((classItem) => (
-                                  <SelectItem 
-                                    key={classItem._id} 
-                                    value={classItem._id as string}
-                                    className="cursor-pointer transition-colors duration-200"
-                                  >
-                                    {classItem.title}
-                                  </SelectItem>
-                                ))
-                              ) : (
-                                <div className="px-2 py-1 text-sm text-gray-500 dark:text-gray-400">
-                                  No classes available
                                 </div>
                               )}
                             </SelectContent>
