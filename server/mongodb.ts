@@ -119,11 +119,18 @@ export class MongoDBStorage implements IStorage {
     
     const user: User = {
       _id: new ObjectId().toString(),
-      ...userData,
+      ...userData, // enrolledCourses will be included if present
       password: hashedPassword
     };
     
     await this.users.insertOne(user);
+    // Bidirectional sync: if enrolledCourses is present, add this user to assignedTo of those courses
+    if (user.enrolledCourses && user.enrolledCourses.length > 0) {
+      await this.courses.updateMany(
+        { _id: { $in: user.enrolledCourses } },
+        { $addToSet: { assignedTo: user._id } }
+      );
+    }
     return user;
   }
   
@@ -141,11 +148,26 @@ export class MongoDBStorage implements IStorage {
       userData.password = await bcrypt.hash(userData.password, 10);
     }
 
+    // enrolledCourses will be updated if present in userData
     const result = await this.users.findOneAndUpdate(
       { _id: id },
       { $set: userData },
       { returnDocument: 'after' }
     );
+
+    // Bidirectional sync: update courses' assignedTo if enrolledCourses is present
+    if (userData.enrolledCourses) {
+      // Remove this user from all courses not in enrolledCourses
+      await this.courses.updateMany(
+        { assignedTo: id, _id: { $nin: userData.enrolledCourses } },
+        { $pull: { assignedTo: id } }
+      );
+      // Add this user to all courses in enrolledCourses
+      await this.courses.updateMany(
+        { _id: { $in: userData.enrolledCourses } },
+        { $addToSet: { assignedTo: id } }
+      );
+    }
 
     return result || null;
   }
@@ -226,6 +248,11 @@ export class MongoDBStorage implements IStorage {
         // For public courses, get all student IDs
         const students = await this.users.find({ role: 'student' }).toArray();
         courseData.assignedTo = students.map(student => student._id);
+        // Add this course to all students' enrolledCourses
+        await this.users.updateMany(
+          { role: 'student' },
+          { $addToSet: { enrolledCourses: id } }
+        );
       } else if (courseData.visibility === 'private') {
         // For private courses, keep the provided assignedTo array or use existing one
         courseData.assignedTo = courseData.assignedTo || currentCourse.assignedTo || [];
@@ -244,6 +271,20 @@ export class MongoDBStorage implements IStorage {
       { returnDocument: 'after' }
     );
     
+    // Bidirectional sync: update users' enrolledCourses if assignedTo is present
+    if (courseData.assignedTo) {
+      // Remove this course from all users not in assignedTo
+      await this.users.updateMany(
+        { enrolledCourses: id, _id: { $nin: courseData.assignedTo } },
+        { $pull: { enrolledCourses: id } }
+      );
+      // Add this course to all users in assignedTo
+      await this.users.updateMany(
+        { _id: { $in: courseData.assignedTo } },
+        { $addToSet: { enrolledCourses: id } }
+      );
+    }
+
     return result || null;
   }
   

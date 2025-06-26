@@ -3,6 +3,7 @@ import { ObjectId } from 'mongodb';
 import * as bcrypt from 'bcrypt';
 
 // Interface for our storage needs, whether in-memory or MongoDB
+// User and InsertUser now support enrolledCourses: string[]
 export interface IStorage {
   // User methods
   getUser(id: string): Promise<User | null>;

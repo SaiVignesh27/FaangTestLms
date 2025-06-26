@@ -135,9 +135,19 @@ const questionSetSchema = new mongoose.Schema({
   updatedAt: { type: Date, default: Date.now }
 });
 
+// User Schema
+const userSchema = new mongoose.Schema({
+  name: { type: String, required: true },
+  email: { type: String, required: true, unique: true },
+  password: { type: String, required: true },
+  role: { type: String, enum: ['admin', 'student'], required: true },
+  enrolledCourses: [{ type: String }],
+});
+
 export const Test = mongoose.model('Test', testSchema);
 export const TestSubmission = mongoose.model('TestSubmission', testSubmissionSchema);
 export const Assignment = mongoose.model('Assignment', assignmentSchema);
 export const AssignmentSubmission = mongoose.model('AssignmentSubmission', assignmentSubmissionSchema);
 export const QuestionBankQuestion = mongoose.model('QuestionBankQuestion', questionBankQuestionSchema);
-export const QuestionSet = mongoose.model('QuestionSet', questionSetSchema); 
+export const QuestionSet = mongoose.model('QuestionSet', questionSetSchema);
+export const User = mongoose.model('User', userSchema); 

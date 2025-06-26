@@ -733,8 +733,12 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { password, ...userWithoutPassword } = newUser;
 
       res.status(201).json(userWithoutPassword);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error creating user:', error);
+      // Check for MongoDB duplicate key error
+      if (error.code === 11000 && error.keyPattern && error.keyPattern.email) {
+        return res.status(409).json({ error: 'A user with this email already exists.' });
+      }
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -752,8 +756,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { password, ...userWithoutPassword } = user;
 
       res.json(userWithoutPassword);
-    } catch (error) {
-      console.error('Error fetching user:', error);
+    } catch (error: any) {
+      console.error('Error updating user:', error);
+      if (error.code === 11000 && error.keyPattern && error.keyPattern.email) {
+        return res.status(409).json({ error: 'A user with this email already exists.' });
+      }
       res.status(500).json({ error: 'Internal server error' });
     }
   });
@@ -773,8 +780,11 @@ export async function registerRoutes(app: Express): Promise<Server> {
       const { password, ...userWithoutPassword } = updatedUser;
 
       res.json(userWithoutPassword);
-    } catch (error) {
+    } catch (error: any) {
       console.error('Error updating user:', error);
+      if (error.code === 11000 && error.keyPattern && error.keyPattern.email) {
+        return res.status(409).json({ error: 'A user with this email already exists.' });
+      }
       res.status(500).json({ error: 'Internal server error' });
     }
   });

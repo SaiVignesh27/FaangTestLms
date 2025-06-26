@@ -3,7 +3,7 @@ import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
 import AdminLayout from '@/components/layout/AdminLayout';
 import { apiRequest } from '@/lib/queryClient';
 import { useToast } from '@/hooks/use-toast';
-import { User } from '@shared/schema';
+import { User, Course } from '@shared/schema';
 import { z } from 'zod';
 import { useForm } from 'react-hook-form';
 import { zodResolver } from '@hookform/resolvers/zod';
@@ -56,13 +56,15 @@ import {
   DropdownMenuTrigger,
 } from '@/components/ui/dropdown-menu';
 import { Loader2, MoreVertical, Plus, User as UserIcon, Trash2, Edit } from 'lucide-react';
+import { Tooltip, TooltipTrigger, TooltipContent, TooltipProvider } from '@/components/ui/tooltip';
 
 // Form schema for creating/editing users
 const userFormSchema = z.object({
   name: z.string().min(1, "Name is required"),
   email: z.string().email("Invalid email address"),
-  password: z.string().min(6, "Password must be at least 6 characters"),
+  password: z.string().min(6, "Password must be at least 6 characters").optional(),
   role: z.enum(["admin", "student"]),
+  enrolledCourses: z.array(z.string()).optional(),
 });
 
 type UserFormValues = z.infer<typeof userFormSchema>;
@@ -72,10 +74,16 @@ export default function Users() {
   const queryClient = useQueryClient();
   const [isAddDialogOpen, setIsAddDialogOpen] = useState(false);
   const [selectedUser, setSelectedUser] = useState<User | null>(null);
+  const [dialogError, setDialogError] = useState<string | null>(null);
   
   // Fetch users
   const { data: users, isLoading } = useQuery<User[]>({
     queryKey: ['/api/admin/users'],
+  });
+
+  // Fetch courses for assignment
+  const { data: courses, isLoading: isLoadingCourses } = useQuery<Course[]>({
+    queryKey: ['/api/admin/courses'],
   });
 
   // Setup form with validation
@@ -95,16 +103,20 @@ export default function Users() {
       form.reset({
         name: selectedUser.name,
         email: selectedUser.email,
-        password: '', // Don't prefill password
+        password: undefined, // Don't prefill password
         role: selectedUser.role,
+        enrolledCourses: selectedUser.enrolledCourses || [],
       });
+      setDialogError(null);
     } else {
       form.reset({
         name: '',
         email: '',
         password: '',
         role: 'student',
+        enrolledCourses: [],
       });
+      setDialogError(null);
     }
   }, [selectedUser, form]);
 
@@ -118,13 +130,20 @@ export default function Users() {
         description: 'User created successfully',
       });
       setIsAddDialogOpen(false);
+      setDialogError(null);
     },
     onError: (error) => {
-      toast({
-        title: 'Error creating user',
-        description: (error as Error).message,
-        variant: 'destructive',
-      });
+      // Now that the server sends a specific message, we can just check for it.
+      const errMsg = (error as Error).message;
+      if (errMsg.includes('A user with this email already exists.')) {
+        form.setError('email', {
+          type: 'manual',
+          message: 'A user with this email already exists.',
+        });
+        setDialogError(null);
+      } else {
+        setDialogError('An unexpected error occurred. Please try again or contact support.');
+      }
     },
   });
 
@@ -139,13 +158,20 @@ export default function Users() {
         description: 'User updated successfully',
       });
       setSelectedUser(null);
+      setDialogError(null);
     },
     onError: (error) => {
-      toast({
-        title: 'Error updating user',
-        description: (error as Error).message,
-        variant: 'destructive',
-      });
+      // Now that the server sends a specific message, we can just check for it.
+      const errMsg = (error as Error).message;
+      if (errMsg.includes('A user with this email already exists.')) {
+        form.setError('email', {
+          type: 'manual',
+          message: 'A user with this email already exists.',
+        });
+        setDialogError(null);
+      } else {
+        setDialogError('An unexpected error occurred. Please try again or contact support.');
+      }
     },
   });
 
@@ -171,14 +197,23 @@ export default function Users() {
   // Form submission handler
   const onSubmit = (data: UserFormValues) => {
     if (selectedUser) {
-      // If password is empty, remove it from the update data
-      const updateData = data.password 
-        ? data 
-        : { name: data.name, email: data.email, role: data.role };
-        
+      // Only send password if filled
+      const updateData: any = {
+        name: data.name,
+        email: data.email,
+        role: data.role,
+        enrolledCourses: data.enrolledCourses,
+      };
+      if (data.password && data.password.length >= 6) {
+        updateData.password = data.password;
+      }
       updateUserMutation.mutate({ id: selectedUser._id as string, userData: updateData });
     } else {
-      createUserMutation.mutate(data);
+      // On create, password is required
+      createUserMutation.mutate({
+        ...data,
+        password: data.password || '',
+      });
     }
   };
 
@@ -292,7 +327,12 @@ export default function Users() {
 
       {/* Add User Dialog */}
       <Dialog open={isAddDialogOpen} onOpenChange={setIsAddDialogOpen}>
-        <DialogContent className="sm:max-w-[425px] p-0 gap-0 shadow-2xl">
+        <DialogContent className="sm:max-w-[425px] p-0 gap-0 shadow-2xl max-h-[90vh] overflow-y-auto">
+          {dialogError && (
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-3 mb-2 rounded">
+              <strong>Warning:</strong> {dialogError}
+            </div>
+          )}
           <div className="bg-gradient-to-r from-white-600 to-white-800 p-6 rounded-t-lg shadow-sm">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold text-Black">Add New User</DialogTitle>
@@ -343,7 +383,8 @@ export default function Users() {
                 render={({ field }) => (
                   <FormItem>
                     <FormLabel className="text-sm font-medium">
-                      {selectedUser ? 'New Password (leave blank to keep current)' : 'Password'}
+                      {selectedUser ? 'New Password (optional)' : 'Password'}
+                      {!selectedUser && <span className="text-red-500 ml-1">*</span>}
                     </FormLabel>
                     <FormControl>
                       <Input 
@@ -351,9 +392,13 @@ export default function Users() {
                         placeholder="••••••••" 
                         {...field} 
                         className="focus-visible:ring-blue-500"
+                        required={!selectedUser}
                       />
                     </FormControl>
                     <FormMessage />
+                    {selectedUser && (
+                      <div className="text-xs text-gray-500 mt-1">Leave blank to keep current password</div>
+                    )}
                   </FormItem>
                 )}
               />
@@ -382,6 +427,71 @@ export default function Users() {
                   </FormItem>
                 )}
               />
+              {/* Course assignment for students */}
+              {form.watch('role') === 'student' && (
+                <div>
+                  <FormLabel className="text-sm font-medium">Assign to Courses</FormLabel>
+                  <div className="mt-2 border rounded-md p-4 max-h-60 overflow-y-auto shadow-sm">
+                    {isLoadingCourses ? (
+                      <div className="flex justify-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      </div>
+                    ) : courses && courses.length > 0 ? (
+                      <div className="space-y-2">
+                        {courses.map((course) => {
+                          const isPublic = course.visibility === 'public';
+                          const checked = form.watch('enrolledCourses')?.includes(course._id as string);
+                          return (
+                            <div key={course._id} className="flex items-center space-x-2">
+                              {isPublic ? (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span>
+                                        <input
+                                          type="checkbox"
+                                          id={`course-${course._id}`}
+                                          checked={checked}
+                                          disabled
+                                        />
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                      All students are always assigned to public courses.
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ) : (
+                                <input
+                                  type="checkbox"
+                                  id={`course-${course._id}`}
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    const enrolled = form.getValues('enrolledCourses') || [];
+                                    if (e.target.checked) {
+                                      form.setValue('enrolledCourses', [...enrolled, course._id as string]);
+                                    } else {
+                                      form.setValue('enrolledCourses', enrolled.filter(id => id !== course._id));
+                                    }
+                                  }}
+                                />
+                              )}
+                              <label htmlFor={`course-${course._id}`} className="text-sm">
+                                {course.title}
+                                {isPublic && (
+                                  <span className="ml-2 text-xs text-blue-500">(Public)</span>
+                                )}
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-2">No courses found</p>
+                    )}
+                  </div>
+                </div>
+              )}
               <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t">
                 <Button 
                   type="button"
@@ -409,7 +519,12 @@ export default function Users() {
 
       {/* Edit User Dialog */}
       <Dialog open={!!selectedUser} onOpenChange={(open) => !open && setSelectedUser(null)}>
-        <DialogContent className="sm:max-w-[425px] p-0 gap-0 shadow-2xl">
+        <DialogContent className="sm:max-w-[425px] p-0 gap-0 shadow-2xl max-h-[90vh] overflow-y-auto">
+          {dialogError && (
+            <div className="bg-yellow-100 border-l-4 border-yellow-500 text-yellow-700 p-3 mb-2 rounded">
+              <strong>Warning:</strong> {dialogError}
+            </div>
+          )}
           <div className="bg-gradient-to-r from-white-600 to-white-800 p-6 rounded-t-lg shadow-sm">
             <DialogHeader>
               <DialogTitle className="text-xl font-semibold text-Black">Edit User</DialogTitle>
@@ -459,16 +574,23 @@ export default function Users() {
                 name="password"
                 render={({ field }) => (
                   <FormItem>
-                    <FormLabel className="text-sm font-medium">New Password (leave blank to keep current)</FormLabel>
+                    <FormLabel className="text-sm font-medium">
+                      {selectedUser ? 'New Password (optional)' : 'Password'}
+                      {!selectedUser && <span className="text-red-500 ml-1">*</span>}
+                    </FormLabel>
                     <FormControl>
                       <Input 
                         type="password" 
                         placeholder="••••••••" 
                         {...field} 
                         className="focus-visible:ring-blue-500"
+                        required={!selectedUser}
                       />
                     </FormControl>
                     <FormMessage />
+                    {selectedUser && (
+                      <div className="text-xs text-gray-500 mt-1">Leave blank to keep current password</div>
+                    )}
                   </FormItem>
                 )}
               />
@@ -497,6 +619,71 @@ export default function Users() {
                   </FormItem>
                 )}
               />
+              {/* Course assignment for students */}
+              {form.watch('role') === 'student' && (
+                <div>
+                  <FormLabel className="text-sm font-medium">Assign to Courses</FormLabel>
+                  <div className="mt-2 border rounded-md p-4 max-h-60 overflow-y-auto shadow-sm">
+                    {isLoadingCourses ? (
+                      <div className="flex justify-center py-4">
+                        <Loader2 className="h-4 w-4 animate-spin text-primary" />
+                      </div>
+                    ) : courses && courses.length > 0 ? (
+                      <div className="space-y-2">
+                        {courses.map((course) => {
+                          const isPublic = course.visibility === 'public';
+                          const checked = form.watch('enrolledCourses')?.includes(course._id as string);
+                          return (
+                            <div key={course._id} className="flex items-center space-x-2">
+                              {isPublic ? (
+                                <TooltipProvider>
+                                  <Tooltip>
+                                    <TooltipTrigger asChild>
+                                      <span>
+                                        <input
+                                          type="checkbox"
+                                          id={`course-${course._id}`}
+                                          checked={checked}
+                                          disabled
+                                        />
+                                      </span>
+                                    </TooltipTrigger>
+                                    <TooltipContent side="top">
+                                      All students are always assigned to public courses.
+                                    </TooltipContent>
+                                  </Tooltip>
+                                </TooltipProvider>
+                              ) : (
+                                <input
+                                  type="checkbox"
+                                  id={`course-${course._id}`}
+                                  checked={checked}
+                                  onChange={(e) => {
+                                    const enrolled = form.getValues('enrolledCourses') || [];
+                                    if (e.target.checked) {
+                                      form.setValue('enrolledCourses', [...enrolled, course._id as string]);
+                                    } else {
+                                      form.setValue('enrolledCourses', enrolled.filter(id => id !== course._id));
+                                    }
+                                  }}
+                                />
+                              )}
+                              <label htmlFor={`course-${course._id}`} className="text-sm">
+                                {course.title}
+                                {isPublic && (
+                                  <span className="ml-2 text-xs text-blue-500">(Public)</span>
+                                )}
+                              </label>
+                            </div>
+                          );
+                        })}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-gray-500 dark:text-gray-400 text-center py-2">No courses found</p>
+                    )}
+                  </div>
+                </div>
+              )}
               <DialogFooter className="gap-2 sm:gap-0 pt-4 border-t">
                 <Button 
                   type="button"
